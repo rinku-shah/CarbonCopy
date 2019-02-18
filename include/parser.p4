@@ -37,7 +37,7 @@ parser c_parser(packet_in packet,
         transition select(hdr.ipv4.protocol) {
             // PROTO_TCP: parse_tcp;
             PROTO_UDP: parse_udp; /* PROTO_UDP is 17 */
-            default: reject; /* ditch other packets for now */
+            default: accept; /* ditch other packets for now */
         }
     }
 
