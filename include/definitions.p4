@@ -16,7 +16,7 @@ const message_type_t WRITE = 2;
 const message_type_t WRITE_REPLY = 3;
 const message_type_t WRITE_CLONE = 4;
 const message_type_t WRITE_CLONE_REPLY = 5;
-
+const message_type_t SWITCH_OVER = 6;
 
 
 const bit<8> DEFAULT_IPV4_TTL = 64;
