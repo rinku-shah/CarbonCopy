@@ -53,10 +53,10 @@ header udp_t {
 // }
 
 header data_t{
-    bit<3>  type_sync;    /* type_sync */
+    bit<8>  type_sync;    /* type_sync */
     bit<128> key1;
     bit<128> value;
-    bit<3>  version;    /* version */
+    bit<8>  version;    /* version */
 }
 
 
