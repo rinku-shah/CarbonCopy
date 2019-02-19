@@ -16,6 +16,7 @@
 
  package org.onosproject.p4tutorial.mytunnel;
 
+
  import org.onlab.packet.Ethernet;
  import org.onlab.packet.IPacket;
  import org.onlab.packet.UDP;
@@ -129,19 +130,19 @@ public class MyTunnelApp {
     // ONOS core services needed by this application.
     //--------------------------------------------------------------------------
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
     private FlowRuleService flowRuleService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
     private CoreService coreService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
     private TopologyService topologyService;
 
     // @Reference(cardinality = ReferenceCardinality.MANDATORY)
     // private HostService hostService;
 
-    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    // @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PacketService packetService;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
@@ -394,9 +395,9 @@ public class MyTunnelApp {
             if(type == Constants.WRITE){
               RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
               byte[] answer = p;
-              answer[0] = Constants.WRITE_REPLY.getBytes();
+              answer[0] = (byte) Constants.WRITE_REPLY;
+              response = new String(b2, StandardCharsets.UTF_8); //16 byte
               if(Constants.DEBUG){
-                response = new String(b2, StandardCharsets.UTF_8); //16 byte
                   System.out.println(response);
               }
               build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
@@ -455,5 +456,5 @@ public class MyTunnelApp {
             short type = eth.getEtherType();
             return type == Ethernet.TYPE_LLDP || type == Ethernet.TYPE_BSN;
         }
-
+    }
 }

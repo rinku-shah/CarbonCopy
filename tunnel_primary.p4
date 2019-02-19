@@ -39,6 +39,8 @@ control c_ingress(inout headers hdr,
         action reply_to_read(bit<128> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
+            egressSpec_t port = 1;
+            standard_metadata.egress_spec = port;
         }
 
         table kv_store {
@@ -92,7 +94,8 @@ control c_egress(inout headers hdr,
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
             hdr.data.type_sync = WRITE_CLONE;
-            standard_metadata.egress_spec = 2;  /* Specify the port here */
+            egressSpec_t secondary_port = 2;
+            standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
             // standard_metadata.egress_spec = SECONDARY_PORT;  /* Specify the port here */
         }
     }

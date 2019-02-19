@@ -1,4 +1,4 @@
-package org.onosproject.p4tutorial.epc;
+package org.onosproject.p4tutorial.mytunnel;
 
 import org.onlab.packet.MacAddress;
 import org.onlab.packet.VlanId;
@@ -52,15 +52,21 @@ public class Rule_insertion{
 
 	/* Declare the variables inside the pipeconf file */
 
-	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,int key, int value){
+	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,String key, String value){
 	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.kv_store");
     PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.key1");
+		byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
+    (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff,
+    (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
+		byte[] key_byte = key.getBytes();
+
     PiCriterion match = PiCriterion.builder()
-            .matchExact(keyID, key)
+            .matchTernary(keyID, key_byte,MASK)
             .build();
 
     PiActionId ingressActionId = PiActionId.of("c_ingress.reply_to_read");
-    PiActionParam valueParam = new PiActionParam(PiActionParamId.of("value"), value);
+		byte[] value_byte = value.getBytes();
+    PiActionParam valueParam = new PiActionParam(PiActionParamId.of("value"), value_byte);
 
     PiAction action = PiAction.builder()
             .withId(ingressActionId)
@@ -68,7 +74,7 @@ public class Rule_insertion{
             .build();
 
     insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
-	
+
 	}
 
 
