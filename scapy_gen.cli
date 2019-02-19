@@ -1,8 +1,14 @@
 class Data(Packet):
 	name = "data "
-	fields_desc = [ByteField("type_sync", 1),
-				   Intfield("key1", 11),
-				   Intfield("value", 12),
+	fields_desc = [ByteField("type_sync", 0),
+				   IntField("key1", 0),
+				   IntField("key2", 0),
+			           IntField("key3", 0),
+				   IntField("key4", 12),
+				   IntField("key1", 0),
+                                   IntField("key1", 0),
+                                   IntField("value1", 0),
+				   IntField("value", 94),
 				   ByteField("version", 1)]
 # d=Data( )
 sendp(Ether()/IP(dst="192.168.1.2")/UDP()/Data( ), iface="eth1")
