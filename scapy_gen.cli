@@ -11,4 +11,4 @@ class Data(Packet):
 				   IntField("value", 94),
 				   ByteField("version", 1)]
 # d=Data( )
-sendp(Ether()/IP(dst="192.168.1.2")/UDP()/Data( ), iface="eth1")
+sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Data( ), iface="eth2")

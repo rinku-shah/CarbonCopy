@@ -16,6 +16,10 @@ control c_ingress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+
+        counter(MAX_PORTS, CounterType.packets_and_bytes) tx_port_counter;
+        counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
+
         action ipv4_forward(egressSpec_t port) {
 
             standard_metadata.egress_spec = port;
@@ -43,6 +47,9 @@ control c_ingress(inout headers hdr,
             standard_metadata.egress_spec = port;
         }
 
+        direct_counter(CounterType.packets_and_bytes) kv_store_counter;
+
+
         table kv_store {
             key = {
                 hdr.data.key1 : exact; /* Do an exact match on the key */
@@ -53,6 +60,7 @@ control c_ingress(inout headers hdr,
                 NoAction;
             }
             default_action = NoAction();
+            counters = kv_store_counter;
         }
 
 
@@ -90,6 +98,20 @@ control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
+        direct_counter(CounterType.packets_and_bytes) dummy_counter;
+
+        table dummy {
+            key = {
+                hdr.data.key1 : exact; /* Do an exact match on the key */
+            }
+            actions = {
+                NoAction;
+            }
+            default_action = NoAction();
+            counters = dummy_counter;
+        }
+
+
 
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
@@ -97,6 +119,10 @@ control c_egress(inout headers hdr,
             egressSpec_t secondary_port = 2;
             standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
             // standard_metadata.egress_spec = SECONDARY_PORT;  /* Specify the port here */
+        }
+
+        if(hdr.data.type_sync == READ_REPLY){
+            dummy.apply();
         }
     }
 
