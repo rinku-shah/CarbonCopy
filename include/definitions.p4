@@ -9,7 +9,7 @@ typedef bit<9> port_t;
 const port_t CPU_PORT = 255;
 
 
-typedef bit<3> message_type_t;
+typedef bit<8> message_type_t;
 const message_type_t READ = 0;
 const message_type_t READ_REPLY = 1;
 const message_type_t WRITE = 2;
