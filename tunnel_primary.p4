@@ -17,8 +17,8 @@ control c_ingress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
 
-        // counter(MAX_PORTS, CounterType.packets_and_bytes) tx_port_counter;
-        // counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
+        counter(MAX_PORTS, CounterType.packets_and_bytes) tx_port_counter;
+        counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
 
         action ipv4_forward(egressSpec_t port) {
 
@@ -80,15 +80,24 @@ control c_ingress(inout headers hdr,
             }
             else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
-                clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
+                // clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
 
 
                 /* Send it to the local controller for rule insertion */
+                // egressSpec_t port = 3;
+                // standard_metadata.egress_spec = port;
                 standard_metadata.egress_spec = CPU_PORT;
                 hdr.packet_in.setValid();
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
             }
+                         // Update port counters at index = ingress or egress port.
+             if (standard_metadata.egress_spec < MAX_PORTS) {
+                 tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
+             }
+             if (standard_metadata.ingress_port < MAX_PORTS) {
+                 rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
+             }
 
         }
 }

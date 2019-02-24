@@ -185,6 +185,7 @@ public class MyTunnelApp {
      * Request packet in via packet service.
      */
     private void requestIntercepts() {
+        
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
 
