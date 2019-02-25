@@ -130,19 +130,19 @@ public class MyTunnelApp {
     // ONOS core services needed by this application.
     //--------------------------------------------------------------------------
 
-    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     private FlowRuleService flowRuleService;
 
-    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     private CoreService coreService;
 
-    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     private TopologyService topologyService;
 
-    // @Reference(cardinality = ReferenceCardinality.MANDATORY)
+    // @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     // private HostService hostService;
 
-    // @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PacketService packetService;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
@@ -157,10 +157,12 @@ public class MyTunnelApp {
     @Activate
     public void activate() {
         // Register app and event listeners.
-        log.info("Starting...");
-        appId = coreService.registerApplication(APP_NAME);
 
+        log.info("Starting...");
+
+        appId = coreService.registerApplication(APP_NAME);
         packetService.addProcessor(processor, PacketProcessor.director(2));
+
         requestIntercepts();
 
 
@@ -185,21 +187,24 @@ public class MyTunnelApp {
      * Request packet in via packet service.
      */
     private void requestIntercepts() {
-        
+
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
 
-        /* PacketPriority.REACTIVE = packets are only sent to the
-        controller if they fail to match any of the rules installed in the switch.  */
-        /* PacketPriority.CONTROL = High priority for control traffic this will result in all
-        traffic matching the selector to be sent to controller */
-        int packet_type = Constants.WRITE;
-        int PORTMASK = 0xff;
-        PiMatchFieldId packetType = PiMatchFieldId.of("hdr.data.type_sync");
-        PiCriterion match = PiCriterion.builder()
-                .matchTernary(packetType, packet_type,PORTMASK)
-                .build();
-        packetService.requestPackets(selector.matchPi(match).build(), PacketPriority.CONTROL, appId);
+        // /* PacketPriority.REACTIVE = packets are only sent to the
+        // controller if they fail to match any of the rules installed in the switch.  */
+        // /* PacketPriority.CONTROL = High priority for control traffic this will result in all
+        // traffic matching the selector to be sent to controller */
+        // int packet_type = Constants.WRITE;
+        // int PORTMASK = 0xff;
+        // PiMatchFieldId packetType = PiMatchFieldId.of("hdr.data.type_sync");
+        // // PiCriterion match = PiCriterion.builder()
+        // //         .matchTernary(packetType, packet_type,PORTMASK)
+        // //         .build();
+        // PiCriterion match = PiCriterion.builder()
+        //         .matchExact(packetType, packet_type)
+        //         .build();
+        // packetService.requestPackets(selector.matchPi(match).build(), PacketPriority.CONTROL, appId);
 
     }
 
@@ -226,9 +231,10 @@ public class MyTunnelApp {
             // can't do any more to it.
 
             if (context.isHandled()) {
-//                log.info("context is already handled");
+               log.info("context is already handled");
                 return;
             }
+            log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();

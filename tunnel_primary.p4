@@ -43,8 +43,6 @@ control c_ingress(inout headers hdr,
         action reply_to_read(bit<128> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
-            // egressSpec_t port = 1;
-            // standard_metadata.egress_spec = port;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
         }
 
@@ -114,6 +112,17 @@ control c_egress(inout headers hdr,
             egressSpec_t secondary_port = 2;
             standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
             // standard_metadata.egress_spec = SECONDARY_PORT;  /* Specify the port here */
+        }
+        else if (hdr.data.type_sync == READ_REPLY){
+            macAddr_t tempMac;
+            tempMac = hdr.ethernet.srcAddr;
+            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+            hdr.ethernet.dstAddr = tempMac;
+
+            ip4Addr_t tempip4;
+            tempip4 = hdr.ipv4.srcAddr;
+            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+            hdr.ipv4.dstAddr = tempip4;
         }
     }
 

@@ -60,8 +60,11 @@ public class Rule_insertion{
     (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
 		byte[] key_byte = key.getBytes();
 
-    PiCriterion match = PiCriterion.builder()
-            .matchTernary(keyID, key_byte,MASK)
+    // PiCriterion match = PiCriterion.builder()
+    //         .matchTernary(keyID, key_byte,MASK)
+    //         .build();
+		PiCriterion match = PiCriterion.builder()
+            .matchExact(keyID, key_byte)
             .build();
 
     PiActionId ingressActionId = PiActionId.of("c_ingress.reply_to_read");
