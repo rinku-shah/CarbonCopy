@@ -242,6 +242,7 @@ public class MyTunnelApp {
             if(Constants.DEBUG) {
                 log.warn("Packet received from {}", connectPoint);
                 log.warn("Device ID {}", deviceId);
+                log.warn("Packet details {}", pkt);
             }
             // parse the incoming packet as Ethernet frame
             Ethernet ethPkt = pkt.parsed();

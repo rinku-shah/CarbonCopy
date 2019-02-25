@@ -1,0 +1,14 @@
+1.
+Same elected id issue between local and remote controller -
+  Change the file P4RuntimeClientImpl.java in remote controller. File Path : ~/onos/protocols/p4runtime/ctl/src/main/java/org/onosproject/p4runtime/ctl
+  Modified file is in onos_controller/ directory of this project.
+
+2.
+Make sure to connect both the Controllers before working.
+
+3.
+For some reason setting egress_spec is not sufficient. We have to change IP and MAC adresses manually in the p4 code.
+There should be some solution to this?
+
+4.
+Arijit Make proper scapy files which can directly run and which can directly test if the reply packet is received back.
