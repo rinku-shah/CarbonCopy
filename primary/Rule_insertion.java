@@ -55,14 +55,11 @@ public class Rule_insertion{
 	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,String key, String value){
 	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.kv_store");
     PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.key1");
-		byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
-    (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff,
-    (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
+		// byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
+    // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff,
+    // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
 		byte[] key_byte = key.getBytes();
 
-    // PiCriterion match = PiCriterion.builder()
-    //         .matchTernary(keyID, key_byte,MASK)
-    //         .build();
 		PiCriterion match = PiCriterion.builder()
             .matchExact(keyID, key_byte)
             .build();

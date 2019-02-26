@@ -73,8 +73,12 @@ control c_ingress(inout headers hdr,
 
             }
             else if(hdr.data.type_sync==READ){
-                kv_store.apply();
-                return;
+                if(kv_store.apply().hit){
+                    return;
+                }
+                else{
+                    // Code for READ NOT FOUND
+                }
             }
             else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
