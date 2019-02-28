@@ -1,0 +1,33 @@
+1. onos_controller -
+  cd ~/onos
+  ./run_onos.sh
+
+2. primary -
+  cd ~/onos
+  ./run_onos.sh
+
+3. primary -
+  cd ~/switch_files
+  ./run_switch
+
+4. primary -
+  cd ~/switch_files
+  python con.py
+  python con_local.py
+
+5. primary -
+  onos localhost
+  > app activate p4tutorial.mytunnel
+
+6. gateway -
+  sudo scapy
+
+
+Points -
+  * After changing any p4 code put it on both the controllers and make it.
+  * After changing MyTunnelApp.java or any *.java files put it on local controller only.
+  * After making any change start again from step 1 above.
+
+  To put it on primary machine -
+  On local machine - ./primary <filename>
+  On primary - cd <required_directory>; cp ~/<filename> <filename>
