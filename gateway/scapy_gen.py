@@ -4,11 +4,11 @@ from random import randint
 import time
 
 
-dst_ip = sys.argv[1]
-num_packets = int(sys.argv[2])
-read_isto_write = int(sys.argv[3])
-delay = sys.argv[4]
-print("==== Total num of packets sent will be %d =====" % num_packets*read_isto_write)
+dst_ip = "192.168.2.2"
+read_isto_write = 1
+delay = 0
+duration = float(sys.argv[1])
+num_packets = 0
 
 class ReadData(Packet):
     name = "data "
@@ -38,20 +38,27 @@ class WriteData(Packet):
 
 
 def sendRead():
-    key = randint(0,1000)
-    val = key + 15
+    # key = randint(0,1000)
+    # val = key + 15
+    key = 12
+    val = 13
     print("---- sending Read packet with key:%s and value:%d ----" % (key, val))
-    sr1(Ether()/IP(dst=dst_ip)/UDP()/ReadData(key4=key,value=val), iface="eth2", timeout=2)
+    srp1(Ether()/IP(dst=dst_ip)/UDP()/ReadData(key4=key,value=val), iface="eth2", timeout=2)
 
 def sendWrite():
     key = randint(0,1000)
     val = key + 15
     print("---- Write packet sent with key:%s and value:%d ----" % (key, val))
-    sr1(Ether()/IP(dst=dst_ip)/UDP()/WriteData(key4=key,value=val), iface="eth2", timeout=2)
+    srp1(Ether()/IP(dst=dst_ip)/UDP()/WriteData(key4=key,value=val), iface="eth2", timeout=2)
 
-for i in range(0,int(num_packets)):
+st = time.time()
+while (time.time() - st) <= duration:
     for j in range(0,int(read_isto_write)):
         sendRead()
+        num_packets += 1
         time.sleep(float(delay))
-    sendWrite()
-    time.sleep(float(delay))
+    # sendWrite()
+    # num_packets += 1
+    # time.sleep(float(delay))
+
+print("==== Total num of packets sent is %d =====" % num_packets)
