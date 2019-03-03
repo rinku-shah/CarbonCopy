@@ -234,7 +234,7 @@ public class MyTunnelApp {
                log.info("context is already handled");
                 return;
             }
-            
+
             log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
@@ -266,6 +266,10 @@ public class MyTunnelApp {
                     return;
                 }
             }
+            // Filter out ARP packets
+            if (ethPkt.getEtherType() == Ethernet.TYPE_ARP) {
+                return;
+            }
 
             /****************   PARSE Ethernet srcMAC and dstMAC ***************************/
             MacAddress srcMac = ethPkt.getSourceMAC();
@@ -285,7 +289,22 @@ public class MyTunnelApp {
             // tcp_udp_header will have tcp/udp header
             IPacket tcp_udp_header = ipheader.getPayload();
             // final_payload will have actual payload of the packet
-            IPacket final_payload = tcp_udp_header.getPayload();
+            IPv4 tmp_ipv4Packet = (IPv4) ipPkt.getPayload();
+            int srcAddress = tmp_ipv4Packet.getSourceAddress();
+            String srcIPAddr = tmp_ipv4Packet.fromIPv4Address(srcAddress);
+
+            byte protocol = tmp_ipv4Packet.getProtocol();
+            IPacket final_payload = tcp_udp_header.getPayload(); 
+            // if (protocol == IPv4.PROTOCOL_UDP) {
+            //     if(Constants.DEBUG){
+            //         log.info("received non-UDP packet. Returning ");
+            //         }
+                
+            // }
+            // else {
+            //     return;
+            // }            
+            
 
             byte ipv4Protocol=IPv4.PROTOCOL_UDP;
             int ipv4SourceAddress = 0;
@@ -358,65 +377,80 @@ public class MyTunnelApp {
                         return;
                 }
             }
+        
+            if (!srcIPAddr.equals("192.168.100.100")) {
+                String payload;
+                if(Constants.BITWISE_DEBUG){
+                    log.warn("payload direct = {}",((Data)final_payload).getData());
+                }
+                byte[] p =((Data)final_payload).getData();
 
-            String payload;
-            if(Constants.BITWISE_DEBUG){
-                log.warn("payload direct = {}",((Data)final_payload).getData());
+                byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
+                byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
+                byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
+                byte [] b4 = Arrays.copyOfRange(p, 33, 34); //value
+                
+
+                byte code = ByteBuffer.wrap(b1).get();
+                int type = code;
+                String key1 = new String(b2, StandardCharsets.UTF_8); //16 byte
+                      String value = new String(b3, StandardCharsets.UTF_8); //16 byte
+
+
+                ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
+                // int first = bb.getShort(); //pull off a 16 bit short (1, 5)
+                // int second = bb.get(); //pull off the next byte (5)
+                // log.warn("msg id  = {}",second);
+                // String third = Integer.toString(bb.getInt()); //pull off the next 32 bit int (0, 1, 0, 5)
+                // log.warn("sep = {}",third);
+                // System.out.println(first + " " + second + " " + third);
+                payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
+                if (ethPkt == null) {
+                    return;
+                }
+                else{
+    //                log.warn("Packet contains !!!!! {}",ethPkt.toString());
+                    // if(Constants.DEBUG) {
+                    if(Constants.DEBUG) {
+                        log.warn(" {}", ipheader);
+                        log.warn(" {}", tcp_udp_header);
+                        log.warn("Packet payload = {}",payload);
+
+                    }
+                    // returns org.onlab.packet.Data as type of final_payload
+                    // final_payload is ASCII encoded bytearray
+    //                log.warn("Packet contains ????? {}",final_payload.getClass().getName());    // gives org.onlab.packet.Data
+                }
+
+                String response;
+
+                if(type == Constants.WRITE){
+                  RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
+                  byte[] answer = p;
+                  answer[0] = (byte) Constants.WRITE_REPLY;
+                  byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
+                  response = new String(type_bit, StandardCharsets.UTF_8);
+                  response += new String(b2, StandardCharsets.UTF_8); //16 byte
+                  response += new String(b3, StandardCharsets.UTF_8); //16 byte
+                  response += new String(b4, StandardCharsets.UTF_8); //1 byte
+                  if(Constants.DEBUG){
+                    log.warn("response = {}",response);
+                  }
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                }
+
             }
-            byte[] p =((Data)final_payload).getData();
-
-            byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
-            byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
-            byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
-
-            byte code = ByteBuffer.wrap(b1).get();
-            int type = code;
-            String key1 = new String(b2, StandardCharsets.UTF_8); //16 byte
-			      String value = new String(b3, StandardCharsets.UTF_8); //16 byte
-
-
-            ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
-            // int first = bb.getShort(); //pull off a 16 bit short (1, 5)
-            // int second = bb.get(); //pull off the next byte (5)
-            // log.warn("msg id  = {}",second);
-            // String third = Integer.toString(bb.getInt()); //pull off the next 32 bit int (0, 1, 0, 5)
-            // log.warn("sep = {}",third);
-            // System.out.println(first + " " + second + " " + third);
-            payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
-            if (ethPkt == null) {
+            else {
+                    if(Constants.DEBUG){
+                        log.info("received non-UDP packet. Returning ");
+                    }
                 return;
             }
-            else{
-//                log.warn("Packet contains !!!!! {}",ethPkt.toString());
-                // if(Constants.DEBUG) {
-                if(Constants.DEBUG) {
-                    log.warn(" {}", ipheader);
-                    log.warn(" {}", tcp_udp_header);
-                    log.warn("Packet payload = {}",payload);
-
-                }
-                // returns org.onlab.packet.Data as type of final_payload
-                // final_payload is ASCII encoded bytearray
-//                log.warn("Packet contains ????? {}",final_payload.getClass().getName());    // gives org.onlab.packet.Data
-            }
-            String response;
-
-            if(type == Constants.WRITE){
-              RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
-              byte[] answer = p;
-              answer[0] = (byte) Constants.WRITE_REPLY;
-              response = new String(b2, StandardCharsets.UTF_8); //16 byte
-              if(Constants.DEBUG){
-                  System.out.println(response);
-              }
-              build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
-            }
-
-
         }
 
 
         private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+          log.warn("Here .....");
             Data payload_data = new Data();
             payload_data.setData(response.toString().getBytes());
             UDP udp = new UDP();
@@ -443,17 +477,24 @@ public class MyTunnelApp {
                     .setDestinationMACAddress(srcMac)
                     .setSourceMACAddress(dstMac)
                     .setPayload(ip_pkt);
-
+                    if(Constants.DEBUG){
+                        log.warn("1 sending payload as = {}",response);
+                        log.warn("1 Sending IP header as  : {}",ip_pkt);
+                    }
 
             TrafficTreatment treatment = DefaultTrafficTreatment.builder()
                     .setOutput(connectPoint.port())
                     .build();
-
+                    if(Constants.DEBUG){
+                        log.warn("2 sending payload as = {}",response);
+                        log.warn("2 Sending IP header as  : {}",ip_pkt);
+                    }
             OutboundPacket outboundPacket =
                     new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
                                               ByteBuffer.wrap(ethernet.serialize()));
             if(Constants.DEBUG) {
-                log.debug("Processing outbound packet: {}", outboundPacket);
+              log.warn("Processing outbound packet: {}", outboundPacket);
+                log.warn("Ethernet packet: {}", ethernet);
             }
 
             packetService.emit(outboundPacket);

@@ -59,7 +59,7 @@ control c_ingress(inout headers hdr,
                 NoAction;
             }
             default_action = NoAction();
-            counters = kv_store_counter;
+            // counters = kv_store_counter;
         }
 
 

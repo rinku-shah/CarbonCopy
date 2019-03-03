@@ -8,7 +8,13 @@ Make sure to connect both the Controllers before working.
 
 3.
 For some reason setting egress_spec is not sufficient. We have to change IP and MAC adresses manually in the p4 code.
-There should be some solution to this?
+There should be some solution to this? NO
 
 4.
 Arijit Make proper scapy files which can directly run and which can directly test if the reply packet is received back.
+
+5.
+Filter out packets in controller. Filtering by protocol UDP (doesn't work), so filter by src ip Address = 192.168.100.100
+
+6.
+Malformed WRITE_REPLY packets handled by byte array constructs in MyTunnelApp.java

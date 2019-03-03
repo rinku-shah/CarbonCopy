@@ -18,6 +18,9 @@ const message_type_t WRITE_CLONE = 4;
 const message_type_t WRITE_CLONE_REPLY = 5;
 const message_type_t SWITCH_OVER = 6;
 
+// MAC Address of secondary
+const bit<48> sec_mac = 0x00163e0c3711;
+const bit<32> sec_ipaddr = 0xc0a80402;
 
 const bit<8> DEFAULT_IPV4_TTL = 64;
 

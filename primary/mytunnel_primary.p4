@@ -59,7 +59,7 @@ control c_ingress(inout headers hdr,
                 NoAction;
             }
             default_action = NoAction();
-            counters = kv_store_counter;
+            // counters = kv_store_counter;
         }
 
 
@@ -129,7 +129,8 @@ control c_egress(inout headers hdr,
             hdr.data.type_sync = WRITE_CLONE;
             egressSpec_t secondary_port = 2;
             standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
-            // standard_metadata.egress_spec = SECONDARY_PORT;  /* Specify the port here */
+            hdr.ethernet.dstAddr = ;
+            
         }
         else if (hdr.data.type_sync == READ_REPLY){
             macAddr_t tempMac;
