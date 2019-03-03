@@ -436,7 +436,7 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
                 }
 
             }

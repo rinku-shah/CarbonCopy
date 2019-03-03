@@ -31,6 +31,13 @@ control c_ingress(inout headers hdr,
             mark_to_drop();
         }
 
+        /* Take the value from the key value container pushed table */
+        action reply_to_read(bit<128> value) {
+            hdr.data.type_sync = READ_REPLY;
+            hdr.data.value = value;
+            standard_metadata.egress_spec = standard_metadata.ingress_port;
+        }
+
         table kv_store {
             key = {
                 hdr.data.key1 : exact; /* Do an exact match on the key */
@@ -38,16 +45,13 @@ control c_ingress(inout headers hdr,
             actions = {
                 reply_to_read;
                 _drop;
+                NoAction;
             }
             default_action = NoAction();
         }
 
 
-        /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<128> value) {
-            hdr.data.type_sync = READ_REPLY;
-            hdr.data.value = value;
-        }
+        
 
         apply {
             if (standard_metadata.ingress_port == CPU_PORT) {
@@ -92,7 +96,7 @@ control c_egress(inout headers hdr,
 
 // ----------------------- SWITCH -----------------------------
 
-secondarySwitch(c_parser(),
+V1Switch(c_parser(),
          c_verify_checksum(),
          c_ingress(),
          c_egress(),
