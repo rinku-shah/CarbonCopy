@@ -46,7 +46,7 @@ control c_ingress(inout headers hdr,
             standard_metadata.egress_spec = standard_metadata.ingress_port;
         }
 
-        direct_counter(CounterType.packets_and_bytes) kv_store_counter;
+        // direct_counter(CounterType.packets_and_bytes) kv_store_counter;
 
 
         table kv_store {
@@ -82,6 +82,8 @@ control c_ingress(inout headers hdr,
             }
             else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
+                egressSpec_t secondary_port = 2;
+                standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
                 clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
 
 
@@ -127,8 +129,6 @@ control c_egress(inout headers hdr,
         if (IS_I2E_CLONE(standard_metadata)) {
             dummy.apply();
             hdr.data.type_sync = WRITE_CLONE;
-            egressSpec_t secondary_port = 2;
-            standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
             hdr.ethernet.dstAddr = sec_mac;
