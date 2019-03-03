@@ -46,7 +46,7 @@ control c_ingress(inout headers hdr,
             standard_metadata.egress_spec = standard_metadata.ingress_port;
         }
 
-        direct_counter(CounterType.packets_and_bytes) kv_store_counter;
+        // direct_counter(CounterType.packets_and_bytes) kv_store_counter;
 
 
         table kv_store {
@@ -129,7 +129,10 @@ control c_egress(inout headers hdr,
             hdr.data.type_sync = WRITE_CLONE;
             egressSpec_t secondary_port = 2;
             standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
-            hdr.ethernet.dstAddr = ;
+            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+            hdr.ethernet.dstAddr = sec_mac;
+            hdr.ipv4.dstAddr = sec_ipaddr;
             
         }
         else if (hdr.data.type_sync == READ_REPLY){
