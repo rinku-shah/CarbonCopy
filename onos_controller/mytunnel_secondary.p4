@@ -13,6 +13,9 @@ control c_ingress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+        counter(MAX_PORTS, CounterType.packets_and_bytes) tx_port_counter;
+        counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
+
         action ipv4_forward(egressSpec_t port) {
 
             standard_metadata.egress_spec = port;
@@ -77,6 +80,14 @@ control c_ingress(inout headers hdr,
                 return;
 
             }
+
+             // Update port counters at index = ingress or egress port.
+             if (standard_metadata.egress_spec < MAX_PORTS) {
+                 tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
+             }
+             if (standard_metadata.ingress_port < MAX_PORTS) {
+                 rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
+             }
 
         }
 }

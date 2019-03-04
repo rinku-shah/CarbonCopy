@@ -1,0 +1,16 @@
+1. Modified p4tools/p4runtime/proto/server/pi_server.cpp on simple_switch_grpc to include multiple MASTER controller support 
+	- writeRPC working but chek after running "python con.py" to check if initial tables are filled or not 
+	- both ONOS-rc and onos-lc are receiving PACKET IN as both are masters
+
+2. We need to send different election ID so modified ONOS file in ~/onos/protocols/p4runtime/ctl/src/main/java/org/onosproject/p4runtime/ctl/P4RuntimeClientImpl.java to change election ID in both ONOS 		controllers. ONOS-RC has election ID 7  and onos-offload has election ID 20. New elction ID for secondary is 9
+	- Also commented  logWriteErrors() fn 
+
+3. ~/onos/drivers/p4runtime/src/main/java/org/onosproject/drivers/p4runtime/P4RuntimeFlowRuleProgrammable.java  in onos-offload
+	commented  applyEntry(PiTableEntryHandle.of(deviceId, entry),
+                       entry, null, REMOVE);
+	in cleanUpInconsistentEntries() fn.
+	- commented error logs at some places to save disk writes and improve throughput 
+		though check consistency before it for the same
+
+4. https://github.com/p4lang/p4factory/issues/159
+Use ./sswitch_CLI for adding mirroring_add 500 2

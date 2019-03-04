@@ -19,10 +19,7 @@ Filter out packets in controller. Filtering by protocol UDP (doesn't work), so f
 6.
 Malformed WRITE_REPLY packets handled by byte array constructs in MyTunnelApp.java
 
-7. https://github.com/p4lang/p4factory/issues/159
-Use ./sswitch_CLI for adding mirroring_add 500 2
-
-8. setting egress_Spec doesn't work in egress pipeline
+7. setting egress_Spec doesn't work in egress pipeline
 http://lists.p4.org/pipermail/p4-discuss_lists.p4.org/2017-November/000415.html
 http://lists.p4.org/pipermail/p4-dev_lists.p4.org/2017-October/003327.html
 http://csie.nqu.edu.tw/smallko/sdn/p4-clone.htm

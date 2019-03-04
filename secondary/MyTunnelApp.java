@@ -424,7 +424,7 @@ public class MyTunnelApp {
 
                 String response;
 
-                if(type == Constants.WRITE){
+                if(type == Constants.WRITE_CLONE){
                   RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
                   byte[] answer = p;
                   answer[0] = (byte) Constants.WRITE_REPLY;
