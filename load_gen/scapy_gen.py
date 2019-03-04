@@ -4,7 +4,7 @@ from random import randint
 import time
 
 
-dst_ip = "192.168.2.2"
+dst_ip = "192.168.1.2"
 read_isto_write = 1
 delay = 0
 duration = float(sys.argv[1])
@@ -43,13 +43,13 @@ def sendRead():
     key = 12
     val = 13
     print("---- sending Read packet with key:%s and value:%d ----" % (key, val))
-    srp1(Ether()/IP(dst=dst_ip)/UDP()/ReadData(key4=key,value=val), iface="eth2", timeout=2)
+    srp1(Ether()/IP(dst=dst_ip)/UDP()/ReadData(key4=key,value=val), iface="eth1", timeout=2)
 
 def sendWrite():
     key = randint(0,1000)
     val = key + 15
     print("---- Write packet sent with key:%s and value:%d ----" % (key, val))
-    srp1(Ether()/IP(dst=dst_ip)/UDP()/WriteData(key4=key,value=val), iface="eth2", timeout=2)
+    srp1(Ether()/IP(dst=dst_ip)/UDP()/WriteData(key4=key,value=val), iface="eth1", timeout=2)
 
 st = time.time()
 while (time.time() - st) <= duration:
