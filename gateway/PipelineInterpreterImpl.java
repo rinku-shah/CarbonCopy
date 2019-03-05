@@ -76,7 +76,6 @@ public final class PipelineInterpreterImpl
     private static final String C_INGRESS = "c_ingress";
 
     private static final String C_EGRESS = "c_egress";
-    private static final String T_KV_STORE = "kv_store";
     private static final String GF = "gateway_forward";
 
 
@@ -104,29 +103,19 @@ public final class PipelineInterpreterImpl
            PiMatchFieldId.of(HDR + DOT + UDP + DOT + "dstPort");
     private static final PiMatchFieldId ETH_TYPE_ID =
             PiMatchFieldId.of(HDR + DOT + ETHERNET + DOT + "etherType");
-    private static final PiMatchFieldId KEY1 =
-            PiMatchFieldId.of(HDR + DOT + DATA + DOT + "key1");
     private static final PiMatchFieldId TYPE_SYNC =
             PiMatchFieldId.of(HDR + DOT + DATA + DOT + "type_sync");
 
 
-    private static final PiTableId TABLE_KV_STORE_ID =
-            PiTableId.of(C_INGRESS + DOT + T_KV_STORE);
     private static final PiTableId GF_ID =
             PiTableId.of(C_INGRESS + DOT + GF);
 
     private static final PiActionId ACT_ID_NOP =
             PiActionId.of("NoAction");
-    private static final PiActionId ACT_ID_SEND_TO_CPU =
-            PiActionId.of(C_INGRESS + DOT + "send_to_cpu");
     private static final PiActionId ACT_ID_MYFORWARD =
             PiActionId.of(C_INGRESS + DOT + "myforward");
-    private static final PiActionId ACT_ID_REPLY_TO_READ =
-            PiActionId.of(C_INGRESS + DOT + "reply_to_read");
-
-    private static final PiActionParamId ACT_PARAM_ID_VALUE =
-            PiActionParamId.of("value");
-
+    
+    
     private static final PiActionParamId ACT_PARAM_ID_VALUE1 =
             PiActionParamId.of("port");
     private static final PiActionParamId ACT_PARAM_ID_VALUE2 =
@@ -136,14 +125,10 @@ public final class PipelineInterpreterImpl
     // private static final PiActionParamId ACT_PARAM_ID_PORT =
     //         PiActionParamId.of("port");
 
-    private static final BiMap<Integer, PiTableId> TABLE_MAP =
-            new ImmutableBiMap.Builder<Integer, PiTableId>()
-                    .put(0, TABLE_KV_STORE_ID)
-                    .build();
-
+    
     private static final BiMap<Integer, PiTableId> TABLE_MAP1 =
             new ImmutableBiMap.Builder<Integer, PiTableId>()
-                    .put(1, GF_ID)
+                    .put(0, GF_ID)
                     .build();
 
     private static final BiMap<Criterion.Type, PiMatchFieldId> CRITERION_MAP =
@@ -167,19 +152,19 @@ public final class PipelineInterpreterImpl
 
     @Override
     public Optional<PiTableId> mapFlowRuleTableId(int flowRuleTableId) {
-        return Optional.ofNullable(TABLE_MAP.get(flowRuleTableId));
+        return Optional.ofNullable(TABLE_MAP1.get(flowRuleTableId));
     }
 
     @Override
     public Optional<Integer> mapPiTableId(PiTableId piTableId) {
-        return Optional.ofNullable(TABLE_MAP.inverse().get(piTableId));
+        return Optional.ofNullable(TABLE_MAP1.inverse().get(piTableId));
     }
 
     @Override
     public PiAction mapTreatment(TrafficTreatment treatment, PiTableId piTableId)
             throws PiInterpreterException {
 
-        if (piTableId != TABLE_KV_STORE_ID || piTableId != GF_ID) {
+        if (piTableId != GF_ID) {
             throw new PiInterpreterException(
                     "Can map treatments only for defined tables");
         }

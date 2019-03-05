@@ -76,8 +76,6 @@ public final class PipelineInterpreterImpl
 
     private static final String C_EGRESS = "c_egress";
     private static final String T_KV_STORE = "kv_store";
-    private static final String GF = "gateway_forward";
-
 
     private static final String EGRESS_PORT = "egress_port";
     private static final String INGRESS_PORT = "ingress_port";
@@ -105,31 +103,22 @@ public final class PipelineInterpreterImpl
             PiMatchFieldId.of(HDR + DOT + ETHERNET + DOT + "etherType");
     private static final PiMatchFieldId KEY1 =
             PiMatchFieldId.of(HDR + DOT + DATA + DOT + "key1");
-    private static final PiMatchFieldId TYPE_SYNC =
-            PiMatchFieldId.of(HDR + DOT + DATA + DOT + "type_sync");
 
 
     private static final PiTableId TABLE_KV_STORE_ID =
             PiTableId.of(C_INGRESS + DOT + T_KV_STORE);
-    private static final PiTableId GF_ID =
-            PiTableId.of(C_INGRESS + DOT + GF);
 
     private static final PiActionId ACT_ID_NOP =
             PiActionId.of("NoAction");
     private static final PiActionId ACT_ID_SEND_TO_CPU =
             PiActionId.of(C_INGRESS + DOT + "send_to_cpu");
-    private static final PiActionId ACT_ID_MYFORWARD =
-            PiActionId.of(C_INGRESS + DOT + "myforward");
+    private static final PiActionId ACT_ID_IPV4_FORWARD =
+            PiActionId.of(C_INGRESS + DOT + "ipv4_forward");
     private static final PiActionId ACT_ID_REPLY_TO_READ =
             PiActionId.of(C_INGRESS + DOT + "reply_to_read");
 
     private static final PiActionParamId ACT_PARAM_ID_VALUE =
             PiActionParamId.of("value");
-
-    private static final PiActionParamId ACT_PARAM_ID_VALUE1 =
-            PiActionParamId.of("port");
-    private static final PiActionParamId ACT_PARAM_ID_VALUE2 =
-            PiActionParamId.of("dst_mac");
 
     //
     // private static final PiActionParamId ACT_PARAM_ID_PORT =
@@ -138,11 +127,6 @@ public final class PipelineInterpreterImpl
     private static final BiMap<Integer, PiTableId> TABLE_MAP =
             new ImmutableBiMap.Builder<Integer, PiTableId>()
                     .put(0, TABLE_KV_STORE_ID)
-                    .build();
-
-    private static final BiMap<Integer, PiTableId> TABLE_MAP1 =
-            new ImmutableBiMap.Builder<Integer, PiTableId>()
-                    .put(1, GF_ID)
                     .build();
 
     private static final BiMap<Criterion.Type, PiMatchFieldId> CRITERION_MAP =
@@ -178,9 +162,9 @@ public final class PipelineInterpreterImpl
     public PiAction mapTreatment(TrafficTreatment treatment, PiTableId piTableId)
             throws PiInterpreterException {
 
-        if (piTableId != TABLE_KV_STORE_ID || piTableId != GF_ID) {
+        if (piTableId != TABLE_KV_STORE_ID) {
             throw new PiInterpreterException(
-                    "Can map treatments only for defined tables");
+                    "Can map treatments only for 'kv_store' table");
         }
 
         if (treatment.allInstructions().size() == 0) {
@@ -204,21 +188,22 @@ public final class PipelineInterpreterImpl
         OutputInstruction outInstruction = (OutputInstruction) instruction;
         PortNumber port = outInstruction.port();
         // log.warn("interpretor port  = {}",port.toLong());
-        List<PiActionParam> list = Arrays.asList(new PiActionParam(
-                            ACT_PARAM_ID_VALUE1, copyFrom(port.toLong())), new PiActionParam(
-                            ACT_PARAM_ID_VALUE2, copyFrom(port.toLong())));
         if (!port.isLogical()) {
                 // log.warn("interpretor inside !port.isLogical()");
             return PiAction.builder()
-                    .withId(ACT_ID_MYFORWARD)
-                    .withParameters(list)
+                    .withId(ACT_ID_REPLY_TO_READ)
+                    .withParameter(new PiActionParam(
+                            ACT_PARAM_ID_VALUE, copyFrom(port.toLong())))
                     .build();
         } else if (port.equals(CONTROLLER)) {
                 // log.warn("interpretor inside port.equals(CONTROLLER)");
+              return PiAction.builder()
+                      .withId(ACT_ID_NOP)
+                      .build();
 
-            return PiAction.builder()
-                    .withId(ACT_ID_NOP)
-                    .build();
+            // return PiAction.builder()
+            //         .withId(ACT_ID_SEND_TO_CPU)
+            //         .build();
         } else {
             throw new PiInterpreterException(format(
                     "Output on logical port '%s' not supported", port));
