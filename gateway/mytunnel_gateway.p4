@@ -26,6 +26,13 @@ control c_ingress(inout headers hdr,
             mark_to_drop();
         }
 
+        action send_to_cpu() {
+            standard_metadata.egress_spec = CPU_PORT;
+            // Packets sent to the controller needs to be prepended with the packet-in header. By setting it valid we make sure it will be deparsed on the wire (see c_deparser).
+            hdr.packet_in.setValid();
+            hdr.packet_in.ingress_port = standard_metadata.ingress_port;
+        }
+
         action myforward(egressSpec_t port, bit<48> dst_mac) {
           hdr.ethernet.dstAddr = dst_mac;
           standard_metadata.egress_spec = port;
@@ -42,11 +49,17 @@ control c_ingress(inout headers hdr,
                 _drop;
                 NoAction;
             }
+            size = 1024;
             default_action = NoAction();
             // counters = kv_store_counter;
         }
 
         apply {
+
+              if (hdr.data.type_sync == SWO) {
+                send_to_cpu();
+                return;
+              }
               
               gateway_forward.apply();
               if (standard_metadata.egress_spec < MAX_PORTS) {

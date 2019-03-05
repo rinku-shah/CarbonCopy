@@ -36,6 +36,19 @@ class WriteData(Packet):
                    IntField("value", 11),
                    ByteField("version", 1)]
 
+class Switch(Packet):
+    name = "data "
+    fields_desc = [ByteField("type_sync", 7),
+                   IntField("key1", 0),
+                   IntField("key2", 0),
+                   IntField("key3", 0),
+                   IntField("key4", 12),
+                   IntField("val1", 0),
+                   IntField("val2", 0),
+                   IntField("val3", 0),
+                   IntField("value", 11),
+                   ByteField("version", 1)]
+
 
 def sendRead():
     # key = randint(0,1000)

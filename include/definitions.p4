@@ -16,7 +16,7 @@ const message_type_t WRITE = 2;
 const message_type_t WRITE_REPLY = 3;
 const message_type_t WRITE_CLONE = 4;
 const message_type_t WRITE_CLONE_REPLY = 5;
-const message_type_t SWITCH_OVER = 6;
+const message_type_t SWO = 7;
 
 // MAC Address of secondary
 const bit<48> sec_mac = 0x00163e0c3711;
