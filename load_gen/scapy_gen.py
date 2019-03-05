@@ -12,7 +12,7 @@ num_packets = 0
 
 class ReadData(Packet):
     name = "data "
-    fields_desc = [ByteField("type_sync", 0),
+    fields_desc = [ByteField("type_sync", 6),
                    IntField("key1", 0),
                    IntField("key2", 0),
                    IntField("key3", 0),

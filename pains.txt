@@ -23,3 +23,5 @@ Malformed WRITE_REPLY packets handled by byte array constructs in MyTunnelApp.ja
 http://lists.p4.org/pipermail/p4-discuss_lists.p4.org/2017-November/000415.html
 http://lists.p4.org/pipermail/p4-dev_lists.p4.org/2017-October/003327.html
 http://csie.nqu.edu.tw/smallko/sdn/p4-clone.htm
+
+8. key 0 is not allowed in match tables
