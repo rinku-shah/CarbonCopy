@@ -76,6 +76,22 @@
  import org.onosproject.net.flow.DefaultTrafficTreatment;
  import org.onosproject.net.flow.TrafficTreatment;
 
+import org.onosproject.net.Device;
+import org.onosproject.net.Port;
+import org.onosproject.net.device.DeviceEvent;
+import org.onosproject.net.device.DeviceListener;
+import org.onosproject.net.device.DeviceService;
+import org.onosproject.net.link.DefaultLinkDescription;
+import org.onosproject.net.link.LinkDescription;
+import org.onosproject.net.link.LinkEvent;
+import org.onosproject.net.link.LinkListener;
+import org.onosproject.net.link.LinkProvider;
+import org.onosproject.net.link.LinkProviderRegistry;
+import org.onosproject.net.link.LinkProviderService;
+import org.onosproject.net.link.LinkService;
+import org.onosproject.net.provider.AbstractProvider;
+import org.onosproject.net.provider.ProviderId;
+
  import org.slf4j.Logger;
 
  import java.util.Collections;
@@ -103,6 +119,7 @@
  import java.util.Set;
  import java.util.concurrent.ConcurrentHashMap;
 
+
  import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -113,7 +130,7 @@
  * discovered, it provisions a tunnel between that host and all the others.
  */
 @Component(immediate = true)
-public class MyTunnelApp {
+public class MyTunnelApp extends AbstractProvider implements LinkProvider {
 
     private static final String APP_NAME = "org.onosproject.p4tutorial.mytunnel";
 
@@ -126,6 +143,7 @@ public class MyTunnelApp {
 
     private static final Logger log = getLogger(MyTunnelApp.class);
 
+    
     //--------------------------------------------------------------------------
     // ONOS core services needed by this application.
     //--------------------------------------------------------------------------
@@ -143,12 +161,34 @@ public class MyTunnelApp {
     // private HostService hostService;
 
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+	protected LinkProviderRegistry registry;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected DeviceService deviceService;
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
+    protected LinkService linkService;
+
+
+    @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PacketService packetService;
 
     private ReactivePacketProcessor processor = new ReactivePacketProcessor();
 
     private int counter = 0;
 
+    private LinkProviderService providerService;
+    private DeviceListener deviceListener = new InternalDeviceListener();
+	private LinkListener linkListener = new InternalLinkListener();
+
+	private int num_devices = 3;
+	private boolean [] dev = new boolean[num_devices+1];
+	DeviceId [] devIds = new DeviceId[num_devices+1];
+
+    public MyTunnelApp() {
+        super(new ProviderId("mytunnel", "org.onosproject.p4tutorial.mytunnel"));
+	}
+    
 
 
     //--------------------------------------------------------------------------
@@ -158,21 +198,31 @@ public class MyTunnelApp {
     public void activate() {
         // Register app and event listeners.
 
-        log.info("Starting...");
+        log.info("============= Starting... =====================");
 
         appId = coreService.registerApplication(APP_NAME);
         packetService.addProcessor(processor, PacketProcessor.director(2));
-
-        requestIntercepts();
+        deviceService.addListener(deviceListener);
+		linkService.addListener(linkListener);
+		providerService = registry.register(this);
+        for (int i=1; i <=3; i++)
+        {
+        	devIds[i] = org.onosproject.net.DeviceId.deviceId("device:bmv2:s"+Integer.toString(i));
+        	dev[i] = false;
+        }
+	    requestIntercepts();
 
 
         // hostService.addListener(hostListener);
-        log.info("STARTED", appId.id());
+        log.info("============ STARTED ===========================", appId.id());
     }
 
     @Deactivate
     public void deactivate() {
         // Remove listeners and clean-up flow rules.
+        deviceService.removeListener(deviceListener);
+		linkService.removeListener(linkListener);
+		registry.unregister(this);
         log.info("Stopping...");
         withdrawIntercepts();
 
@@ -186,10 +236,19 @@ public class MyTunnelApp {
     /**
      * Request packet in via packet service.
      */
+
+    Rule_insertion RI = new Rule_insertion();
+    DeviceId deviceId = org.onosproject.net.DeviceId.deviceId("device:bmv2:s3");
+
     private void requestIntercepts() {
 
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
+
+        // RI.populate_gf(appId,flowRuleService,deviceId,"0","3",secondary);
+        // RI.populate_gf(appId,flowRuleService,deviceId,"2","3",secondary);
+        // RI.populate_gf(appId,flowRuleService,deviceId,"1","1",load_gen);
+        // RI.populate_gf(appId,flowRuleService,deviceId,"3","1",load_gen);
 
         // /* PacketPriority.REACTIVE = packets are only sent to the
         // controller if they fail to match any of the rules installed in the switch.  */
@@ -218,12 +277,85 @@ public class MyTunnelApp {
         packetService.cancelPackets(selector.build(), PacketPriority.REACTIVE, appId);
     }
 
+
+	private class InternalDeviceListener implements DeviceListener {
+        @Override
+        public void event(DeviceEvent event) {
+            DeviceEvent.Type type = event.type();
+            Device device = event.subject();
+            DeviceId devId = device.id();
+            // log.warn("=========== Type : " + type.toString() + " " + device.toString() + " ============");
+            if (type == DeviceEvent.Type.DEVICE_AVAILABILITY_CHANGED || type == DeviceEvent.Type.DEVICE_REMOVED) {
+                // processDeviceLinks(device);
+                log.warn("--------- Device removed -----------");
+                for (int i=1;i<=3; i++) {
+                	if (devId.equals(devIds[i])) {
+                		if (dev[i] == true) {
+                			log.info("***************** Device Removed : " + devId.toString() + " ******************");
+                			dev[i] = false;
+                			if (i==1) {
+                				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
+                				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+                				RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),sec_mac);
+			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),sec_mac);
+			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
+			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
+			                    log.info("============== Switching over to secondary ===============================");
+                			}
+                		}
+                	}
+                }
+
+            } 
+            else if (type == DeviceEvent.Type.DEVICE_ADDED) {
+                // processPortLinks(device, event.port());
+                log.info("------------- Device added -------------");
+                for (int i=1;i<=3; i++) {
+                	if (devId.equals(devIds[i])) {
+                		dev[i] = true;
+                		log.info("***************** Device Added : " + devId.toString() + " **********************");
+                		if (i==3) {
+                			byte [] prim_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ea84e01L).array();
+					        byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+					        
+
+					        // String primary = new String(prim_mac, StandardCharsets.UTF_8);
+					        // String load_gen = new String(lg_mac, StandardCharsets.UTF_8);
+					        // String secondary = new String(sec_mac, StandardCharsets.UTF_8);
+
+					        RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),prim_mac);
+					        RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),prim_mac);
+					        RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
+					        RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
+
+					        log.info("=============== Primary table entries pushed ======================");
+                		}
+                	}
+                }
+
+            }
+        }
+ 	}
+
+ 	//Listens to link events and processes the link additions.
+    private class InternalLinkListener implements LinkListener {
+        @Override
+        public void event(LinkEvent event) {
+            if (event.type() == LinkEvent.Type.LINK_ADDED) {
+                Link link = event.subject();
+                if (link.providerId().scheme().equals("cfg")) {
+                    // processLink(event.subject());
+                }
+            }
+        }
+	}
+
     /**
      * Packet processor responsible for forwarding packets along their paths.
      */
     private class ReactivePacketProcessor implements PacketProcessor {
 
-      Rule_insertion RI = new Rule_insertion();
+      // Rule_insertion RI = new Rule_insertion();
 
         @Override
         public void process(PacketContext context) {
@@ -279,7 +411,7 @@ public class MyTunnelApp {
                 log.warn("srcMACAddres = {}", srcMac);
                 log.warn("dstMACAddres = {}", dstMac);
             }
-//            log.warn("srcMACAddres = {}",dstMac.getClass().getName());     // gives org.onlab.packet.MacAddress
+           log.warn("srcMACAddres = {}",dstMac.getClass().getName());     // gives org.onlab.packet.MacAddress
 
 
             //parse the incoming packet as IP packet
@@ -295,15 +427,15 @@ public class MyTunnelApp {
 
             byte protocol = tmp_ipv4Packet.getProtocol();
             IPacket final_payload = tcp_udp_header.getPayload(); 
-            // if (protocol == IPv4.PROTOCOL_UDP) {
-            //     if(Constants.DEBUG){
-            //         log.info("received non-UDP packet. Returning ");
-            //         }
+            if (protocol == IPv4.PROTOCOL_UDP) {
+                if(Constants.DEBUG){
+                    log.info("received non-UDP packet. Returning ");
+                    }
                 
-            // }
-            // else {
-            //     return;
-            // }            
+            }
+            else {
+                return;
+            }            
             
 
             byte ipv4Protocol=IPv4.PROTOCOL_UDP;
@@ -423,20 +555,17 @@ public class MyTunnelApp {
                 }
 
                 String response;
-
-                if(type == Constants.WRITE){
-                  RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
-                  byte[] answer = p;
-                  answer[0] = (byte) Constants.WRITE_REPLY;
-                  byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
-                  response = new String(type_bit, StandardCharsets.UTF_8);
-                  response += new String(b2, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b3, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b4, StandardCharsets.UTF_8); //1 byte
-                  if(Constants.DEBUG){
-                    log.warn("response = {}",response);
-                  }
-                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
+                byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+                if(type == Constants.SWO){
+                    if (Constants.DEBUG) {
+                        log.warn("================= Inserting NEW entry ==============");
+                    }
+                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),sec_mac);
+                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),sec_mac);
+                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
+                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
+                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
                 }
 
             }
@@ -449,57 +578,57 @@ public class MyTunnelApp {
         }
 
 
-        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
-          log.warn("Here .....");
-            Data payload_data = new Data();
-            payload_data.setData(response.toString().getBytes());
-            UDP udp = new UDP();
-            udp.setSourcePort(udp_dstport);
-            udp.setDestinationPort(udp_srcport);
-            udp.setPayload(payload_data);
+        // private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+        //   log.warn("Here .....");
+        //     Data payload_data = new Data();
+        //     payload_data.setData(response.toString().getBytes());
+        //     UDP udp = new UDP();
+        //     udp.setSourcePort(udp_dstport);
+        //     udp.setDestinationPort(udp_srcport);
+        //     udp.setPayload(payload_data);
 
-            IPv4 ip_pkt = new IPv4();
-            byte ttl = 64;
-            ip_pkt.setDestinationAddress(ipv4SourceAddress);
-            ip_pkt.setSourceAddress(Constants.CONTROLLER_IP);   // controller IP is hardcoded in Constants.java file
-            ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
-            ip_pkt.setTtl(ttl);
-            ip_pkt.setPayload(udp);
+        //     IPv4 ip_pkt = new IPv4();
+        //     byte ttl = 64;
+        //     ip_pkt.setDestinationAddress(ipv4SourceAddress);
+        //     ip_pkt.setSourceAddress(Constants.CONTROLLER_IP);   // controller IP is hardcoded in Constants.java file
+        //     ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
+        //     ip_pkt.setTtl(ttl);
+        //     ip_pkt.setPayload(udp);
 
 
-            if(Constants.DEBUG){
-                log.warn("sending payload as = {}",response);
-                log.warn("Sending IP header as  : {}",ip_pkt);
-            }
+        //     if(Constants.DEBUG){
+        //         log.warn("sending payload as = {}",response);
+        //         log.warn("Sending IP header as  : {}",ip_pkt);
+        //     }
 
-            Ethernet ethernet = new Ethernet();
-            ethernet.setEtherType(Ethernet.TYPE_IPV4)
-                    .setDestinationMACAddress(srcMac)
-                    .setSourceMACAddress(dstMac)
-                    .setPayload(ip_pkt);
-                    if(Constants.DEBUG){
-                        log.warn("1 sending payload as = {}",response);
-                        log.warn("1 Sending IP header as  : {}",ip_pkt);
-                    }
+        //     Ethernet ethernet = new Ethernet();
+        //     ethernet.setEtherType(Ethernet.TYPE_IPV4)
+        //             .setDestinationMACAddress(srcMac)
+        //             .setSourceMACAddress(dstMac)
+        //             .setPayload(ip_pkt);
+        //             if(Constants.DEBUG){
+        //                 log.warn("1 sending payload as = {}",response);
+        //                 log.warn("1 Sending IP header as  : {}",ip_pkt);
+        //             }
 
-            TrafficTreatment treatment = DefaultTrafficTreatment.builder()
-                    .setOutput(connectPoint.port())
-                    .build();
-                    if(Constants.DEBUG){
-                        log.warn("2 sending payload as = {}",response);
-                        log.warn("2 Sending IP header as  : {}",ip_pkt);
-                    }
-            OutboundPacket outboundPacket =
-                    new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
-                                              ByteBuffer.wrap(ethernet.serialize()));
-            if(Constants.DEBUG) {
-              log.warn("Processing outbound packet: {}", outboundPacket);
-                log.warn("Ethernet packet: {}", ethernet);
-            }
+        //     TrafficTreatment treatment = DefaultTrafficTreatment.builder()
+        //             .setOutput(connectPoint.port())
+        //             .build();
+        //             if(Constants.DEBUG){
+        //                 log.warn("2 sending payload as = {}",response);
+        //                 log.warn("2 Sending IP header as  : {}",ip_pkt);
+        //             }
+        //     OutboundPacket outboundPacket =
+        //             new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
+        //                                       ByteBuffer.wrap(ethernet.serialize()));
+        //     if(Constants.DEBUG) {
+        //       log.warn("Processing outbound packet: {}", outboundPacket);
+        //         log.warn("Ethernet packet: {}", ethernet);
+        //     }
 
-            packetService.emit(outboundPacket);
+        //     packetService.emit(outboundPacket);
 
-        }
+        // }
 
         // Indicates whether this is a control packet, e.g. LLDP, BDDP
         private boolean isControlPacket(Ethernet eth) {
