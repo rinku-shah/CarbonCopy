@@ -296,8 +296,8 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 			if (i==1) {
                 				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
                 				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
-                				RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),sec_mac);
-			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),sec_mac);
+                				RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(3),sec_mac);
+			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(3),sec_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
 			                    log.info("============== Switching over to secondary ===============================");
