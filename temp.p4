@@ -65,28 +65,33 @@ control c_ingress(inout headers hdr,
 
 
         apply {
-            if (standard_metadata.ingress_port == CPU_PORT) {
-            // Packet received from CPU_PORT, this is a packet-out sent by the controller. Set the egress port as requested by the controller (packet_out header) and remove the packet_out header.
-            standard_metadata.egress_spec = hdr.packet_out.egress_port;
-            hdr.packet_out.setInvalid();
-            return;
 
-            }
-            else if(hdr.data.type_sync==READ){
+            // @ps
+            // This should come at start of apply block
+            // if (standard_metadata.ingress_port == CPU_PORT && hdr.data.type_sync == WRITE_REPLY) {
+                // standard_metadata.egress_spec = hdr.packet_out.egress_port;
+                // hdr.packet_out.setInvalid();
+                // return;
+            // }
+            // @pe
+
+
+            if(hdr.data.type_sync==READ){
                 if(kv_store.apply().hit){
                     return;
                 }
+                else{
+                    // Code for READ NOT FOUND
+                }
             }
-            if(hdr.data.type_sync==WRITE){
-                /* If this is primary switch, then packet has to be cloned */
-                egressSpec_t secondary_port = 2;
-                standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
-                clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
-
+            else if(hdr.data.type_sync==WRITE){
+                // @ps @pcube_write(match_field,value)  // ex - (hdr.data.type_sync,WRITE)
+                // egressSpec_t secondary_port = 2;
+                // standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
+                // clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
+                // @pe
 
                 /* Send it to the local controller for rule insertion */
-                // egressSpec_t port = 3;
-                // standard_metadata.egress_spec = port;
                 standard_metadata.egress_spec = CPU_PORT;
                 hdr.packet_in.setValid();
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
@@ -123,15 +128,20 @@ control c_egress(inout headers hdr,
 
 
     apply {
-        if (IS_I2E_CLONE(standard_metadata)) {
-            dummy.apply();
-            hdr.data.type_sync = WRITE_CLONE;
-            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
-            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
-            hdr.ethernet.dstAddr = sec_mac;
-            hdr.ipv4.dstAddr = sec_ipaddr;
+        // @ps
+        // This should happen at the beginning of apply of egress block
+        // if (IS_I2E_CLONE(standard_metadata)) {
+        //     dummy.apply();
+            // hdr.data.type_sync = WRITE_CLONE;    //This line won't be needed later as WRITE_CLONE is no longer needed
+        //     hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+        //     hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+        //     hdr.ethernet.dstAddr = sec_mac;
+        //     hdr.ipv4.dstAddr = sec_ipaddr;
+        //
+        // }
+        // @pe
 
-        }
+
         else if (hdr.data.type_sync == READ_REPLY){
             macAddr_t tempMac;
             tempMac = hdr.ethernet.srcAddr;

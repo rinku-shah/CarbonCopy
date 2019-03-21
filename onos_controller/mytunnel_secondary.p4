@@ -54,7 +54,7 @@ control c_ingress(inout headers hdr,
         }
 
 
-        
+
 
         apply {
             if (standard_metadata.ingress_port == CPU_PORT) {
@@ -62,6 +62,11 @@ control c_ingress(inout headers hdr,
             standard_metadata.egress_spec = hdr.packet_out.egress_port;
             // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
             hdr.packet_out.setInvalid();
+
+            // @ps
+            // hdr.our_header.type = WRITE_REPLY
+            // @pe
+            
             return;
 
             }
@@ -100,7 +105,17 @@ control c_egress(inout headers hdr,
 
 
     apply {
+        if (hdr.data.type_sync == READ_REPLY){
+            macAddr_t tempMac;
+            tempMac = hdr.ethernet.srcAddr;
+            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+            hdr.ethernet.dstAddr = tempMac;
 
+            ip4Addr_t tempip4;
+            tempip4 = hdr.ipv4.srcAddr;
+            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+            hdr.ipv4.dstAddr = tempip4;
+        }
     }
 
 }

@@ -10,12 +10,10 @@ const port_t CPU_PORT = 255;
 
 
 typedef bit<8> message_type_t;
-const message_type_t READ = 6;
-const message_type_t READ_REPLY = 1;
-const message_type_t WRITE = 2;
-const message_type_t WRITE_REPLY = 3;
-const message_type_t WRITE_CLONE = 4;
-const message_type_t WRITE_CLONE_REPLY = 5;
+const message_type_t GET = 6;
+const message_type_t GET_REPLY = 1;
+const message_type_t PUT = 2;
+const message_type_t PUT_REPLY = 3;
 const message_type_t SWO = 7;
 
 // MAC Address of secondary

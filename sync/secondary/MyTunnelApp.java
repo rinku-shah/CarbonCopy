@@ -235,7 +235,7 @@ public class MyTunnelApp {
                 return;
             }
 
-            log.info("Got the Packet");
+            log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -427,7 +427,7 @@ public class MyTunnelApp {
                 if(type == Constants.WRITE_CLONE){
                   RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
                   byte[] answer = p;
-                  answer[0] = (byte) Constants.WRITE_REPLY;
+                  answer[0] = (byte) Constants.WRITE_CLONE_REPLY;
                   byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
                   response = new String(type_bit, StandardCharsets.UTF_8);
                   response += new String(b2, StandardCharsets.UTF_8); //16 byte
@@ -436,7 +436,7 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
                 }
 
             }

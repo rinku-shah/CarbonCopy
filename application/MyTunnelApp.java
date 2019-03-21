@@ -235,7 +235,7 @@ public class MyTunnelApp {
                 return;
             }
 
-            log.info("Got the Packet");
+            log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -424,19 +424,29 @@ public class MyTunnelApp {
 
                 String response;
 
-                if(type == Constants.WRITE_CLONE){
-                  RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
+                EntryTemplate temp = new EntryTemplate();
+
+                if(type == Constants.PUT){
+                  // Need in expand - appId,flowRuleService,deviceId
+                  //
+                  temp.key = new byte { (byte)0x00, (byte)0x00, (byte)0x00,
+                  (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+                  (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x12 };
+
+                  @pcube_write_sync_entry(object_name)
+
                   byte[] answer = p;
-                  answer[0] = (byte) Constants.WRITE_REPLY;
+                  answer[0] = (byte) Constants.PUT_OK;
                   byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
-                  response = new String(type_bit, StandardCharsets.UTF_8);
-                  response += new String(b2, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b3, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b4, StandardCharsets.UTF_8); //1 byte
+                  payload = new String(type_bit, StandardCharsets.UTF_8);
+                  payload += new String(b2, StandardCharsets.UTF_8); //16 byte
+                  payload += new String(b3, StandardCharsets.UTF_8); //16 byte
+                  payload += new String(b4, StandardCharsets.UTF_8); //1 byte
                   if(Constants.DEBUG){
-                    log.warn("response = {}",response);
+                    log.warn("payload = {}",payload);
                   }
-                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+
+                  @pcube_send_sync_response(payload,pkt);
                 }
 
             }
@@ -446,59 +456,6 @@ public class MyTunnelApp {
                     }
                 return;
             }
-        }
-
-
-        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
-          log.warn("Here .....");
-            Data payload_data = new Data();
-            payload_data.setData(response.toString().getBytes());
-            UDP udp = new UDP();
-            udp.setSourcePort(udp_dstport);
-            udp.setDestinationPort(udp_srcport);
-            udp.setPayload(payload_data);
-
-            IPv4 ip_pkt = new IPv4();
-            byte ttl = 64;
-            ip_pkt.setDestinationAddress(ipv4SourceAddress);
-            ip_pkt.setSourceAddress(Constants.CONTROLLER_IP);   // controller IP is hardcoded in Constants.java file
-            ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
-            ip_pkt.setTtl(ttl);
-            ip_pkt.setPayload(udp);
-
-
-            if(Constants.DEBUG){
-                log.warn("sending payload as = {}",response);
-                log.warn("Sending IP header as  : {}",ip_pkt);
-            }
-
-            Ethernet ethernet = new Ethernet();
-            ethernet.setEtherType(Ethernet.TYPE_IPV4)
-                    .setDestinationMACAddress(srcMac)
-                    .setSourceMACAddress(dstMac)
-                    .setPayload(ip_pkt);
-                    if(Constants.DEBUG){
-                        log.warn("1 sending payload as = {}",response);
-                        log.warn("1 Sending IP header as  : {}",ip_pkt);
-                    }
-
-            TrafficTreatment treatment = DefaultTrafficTreatment.builder()
-                    .setOutput(connectPoint.port())
-                    .build();
-                    if(Constants.DEBUG){
-                        log.warn("2 sending payload as = {}",response);
-                        log.warn("2 Sending IP header as  : {}",ip_pkt);
-                    }
-            OutboundPacket outboundPacket =
-                    new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
-                                              ByteBuffer.wrap(ethernet.serialize()));
-            if(Constants.DEBUG) {
-              log.warn("Processing outbound packet: {}", outboundPacket);
-                log.warn("Ethernet packet: {}", ethernet);
-            }
-
-            packetService.emit(outboundPacket);
-
         }
 
         // Indicates whether this is a control packet, e.g. LLDP, BDDP

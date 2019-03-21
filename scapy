@@ -1,0 +1,32 @@
+class Write2(Packet):
+	name = "data "
+	fields_desc = [ByteField("type_sync", 2),
+				   IntField("key1", 0),
+				   IntField("key2", 0),
+			           IntField("key3", 0),
+				   IntField("key4", 2),
+				   IntField("key1", 0),
+                                   IntField("key1", 0),
+                                   IntField("value1", 0),
+				   IntField("value", 4),
+				   ByteField("version", 1)]
+# d=Data( )
+sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Data( ), iface="eth2")
+
+
+
+
+class Read2(Packet):
+	name = "data "
+	fields_desc = [ByteField("type_sync", 6),
+				   IntField("key1", 0),
+				   IntField("key2", 0),
+			           IntField("key3", 0),
+				   IntField("key4", 2),
+				   IntField("key1", 0),
+                                   IntField("key1", 0),
+                                   IntField("value1", 0),
+				   IntField("value", 11),
+				   ByteField("version", 1)]
+# d=Data( )
+sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Data(), iface="eth2")

@@ -6,7 +6,6 @@
 #include "include/definitions.p4"
 #define MAX_PORTS 255
 
-
 #define IS_I2E_CLONE(std_meta) (std_meta.instance_type == BMV2_V1MODEL_INSTANCE_TYPE_INGRESS_CLONE)
 
 
@@ -76,8 +75,11 @@ control c_ingress(inout headers hdr,
                 if(kv_store.apply().hit){
                     return;
                 }
+                else{
+                    // Code for READ NOT FOUND
+                }
             }
-            if(hdr.data.type_sync==WRITE){
+            else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
                 egressSpec_t secondary_port = 2;
                 standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
@@ -92,7 +94,15 @@ control c_ingress(inout headers hdr,
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
             }
-                         // Update port counters at index = ingress or egress port.
+            else if(hdr.data.type_sync==WRITE_CLONE_REPLY){
+                hdr.data.type_sync = WRITE_REPLY;
+                // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
+                // when more WRITE packets of same key come on short time.
+                egressSpec_t temp = 1;
+                standard_metadata.egress_spec = temp;
+            }
+
+                            // Update port counters at index = ingress or egress port.
              if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
              }

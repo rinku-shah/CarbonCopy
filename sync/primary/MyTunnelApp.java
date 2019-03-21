@@ -235,7 +235,7 @@ public class MyTunnelApp {
                 return;
             }
 
-            log.info("Got the Packet");
+            log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -424,18 +424,18 @@ public class MyTunnelApp {
 
                 String response;
 
-                if(type == Constants.WRITE_CLONE){
+                if(type == Constants.WRITE){
                   RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
-                  byte[] answer = p;
-                  answer[0] = (byte) Constants.WRITE_REPLY;
-                  byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
-                  response = new String(type_bit, StandardCharsets.UTF_8);
-                  response += new String(b2, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b3, StandardCharsets.UTF_8); //16 byte
-                  response += new String(b4, StandardCharsets.UTF_8); //1 byte
-                  if(Constants.DEBUG){
-                    log.warn("response = {}",response);
-                  }
+                  // byte[] answer = p;
+                  // answer[0] = (byte) Constants.WRITE_REPLY;
+                  // byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
+                  // response = new String(type_bit, StandardCharsets.UTF_8);
+                  // response += new String(b2, StandardCharsets.UTF_8); //16 byte
+                  // response += new String(b3, StandardCharsets.UTF_8); //16 byte
+                  // response += new String(b4, StandardCharsets.UTF_8); //1 byte
+                  // if(Constants.DEBUG){
+                  //   log.warn("response = {}",response);
+                  // }
                   // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
                 }
 

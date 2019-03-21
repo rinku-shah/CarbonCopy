@@ -235,7 +235,7 @@ public class MyTunnelApp {
                 return;
             }
 
-            log.info("Got the Packet");
+            log.info("Got the Pcaket");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -294,17 +294,17 @@ public class MyTunnelApp {
             String srcIPAddr = tmp_ipv4Packet.fromIPv4Address(srcAddress);
 
             byte protocol = tmp_ipv4Packet.getProtocol();
-            IPacket final_payload = tcp_udp_header.getPayload();
+            IPacket final_payload = tcp_udp_header.getPayload(); 
             // if (protocol == IPv4.PROTOCOL_UDP) {
             //     if(Constants.DEBUG){
             //         log.info("received non-UDP packet. Returning ");
             //         }
-
+                
             // }
             // else {
             //     return;
-            // }
-
+            // }            
+            
 
             byte ipv4Protocol=IPv4.PROTOCOL_UDP;
             int ipv4SourceAddress = 0;
@@ -377,7 +377,7 @@ public class MyTunnelApp {
                         return;
                 }
             }
-
+        
             if (!srcIPAddr.equals("192.168.100.100")) {
                 String payload;
                 if(Constants.BITWISE_DEBUG){
@@ -389,7 +389,7 @@ public class MyTunnelApp {
                 byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
                 byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
                 byte [] b4 = Arrays.copyOfRange(p, 33, 34); //value
-
+                
 
                 byte code = ByteBuffer.wrap(b1).get();
                 int type = code;
@@ -424,7 +424,7 @@ public class MyTunnelApp {
 
                 String response;
 
-                if(type == Constants.WRITE_CLONE){
+                if(type == Constants.WRITE){
                   RI.populate_kv_store(appId,flowRuleService,deviceId,key1,value);
                   byte[] answer = p;
                   answer[0] = (byte) Constants.WRITE_REPLY;
@@ -436,7 +436,7 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
                 }
 
             }

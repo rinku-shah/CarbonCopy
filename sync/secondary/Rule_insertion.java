@@ -80,8 +80,7 @@ public class Rule_insertion{
 
     private void insertPiFlowRule(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId, PiTableId tableId,
                                   PiCriterion piCriterion, PiAction piAction) {
-// makeTemporary(int timeout)
-			  FlowRule rule = DefaultFlowRule.builder()
+        FlowRule rule = DefaultFlowRule.builder()
                 .forDevice(switchId)
                 .forTable(tableId)
                 .fromApp(appId)

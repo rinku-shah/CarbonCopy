@@ -76,8 +76,11 @@ control c_ingress(inout headers hdr,
                 if(kv_store.apply().hit){
                     return;
                 }
+                else{
+                    // Code for READ NOT FOUND
+                }
             }
-            if(hdr.data.type_sync==WRITE){
+            else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
                 egressSpec_t secondary_port = 2;
                 standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
@@ -130,7 +133,7 @@ control c_egress(inout headers hdr,
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
             hdr.ethernet.dstAddr = sec_mac;
             hdr.ipv4.dstAddr = sec_ipaddr;
-
+            
         }
         else if (hdr.data.type_sync == READ_REPLY){
             macAddr_t tempMac;

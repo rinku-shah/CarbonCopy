@@ -1,3 +1,23 @@
+TODO -
+No need of write_clone type now.
+Change code in secondary to implement this.
+
+Secondary application code will be a replica of primary application code. The unrolling of annotations
+will be different.
+
+Add our own header. For this parse parser.p4 and header.p4 and add code at relevant positions.
+ASSUMPTION : name of headers struct is "headers"
+
+
+
+
+
+
+
+
+
+
+
 1.
 Same elected id issue between local and remote controller -
   Change the file P4RuntimeClientImpl.java in remote controller. File Path : ~/onos/protocols/p4runtime/ctl/src/main/java/org/onosproject/p4runtime/ctl
