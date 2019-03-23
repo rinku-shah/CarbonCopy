@@ -19,7 +19,7 @@ control c_ingress(inout headers hdr,
         action ipv4_forward(egressSpec_t port) {
 
             standard_metadata.egress_spec = port;
-            
+
         }
 
         action _drop() {
@@ -60,7 +60,7 @@ control c_ingress(inout headers hdr,
                 send_to_cpu();
                 return;
               }
-              
+
               gateway_forward.apply();
               if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
@@ -70,9 +70,9 @@ control c_ingress(inout headers hdr,
               }
 
             }
-            
-            
-        
+
+
+
 }
 
 // ------------------------- EGRESS -----------------------------
@@ -83,7 +83,7 @@ control c_egress(inout headers hdr,
 
 
     apply {
-       
+
     }
 
 }

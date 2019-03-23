@@ -386,9 +386,9 @@ public class MyTunnelApp {
                 byte[] p =((Data)final_payload).getData();
 
                 byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
-                byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
-                byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
-                byte [] b4 = Arrays.copyOfRange(p, 33, 34); //value
+                byte [] b2 = Arrays.copyOfRange(p, 1, 5); //key
+                byte [] b3 = Arrays.copyOfRange(p, 5, 9); //value
+                byte [] b4 = Arrays.copyOfRange(p, 9, 10); //value
 
 
                 byte code = ByteBuffer.wrap(b1).get();

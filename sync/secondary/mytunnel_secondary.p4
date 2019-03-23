@@ -35,7 +35,7 @@ control c_ingress(inout headers hdr,
         }
 
         /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<128> value) {
+        action reply_to_read(bit<32> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
@@ -54,7 +54,7 @@ control c_ingress(inout headers hdr,
         }
 
 
-        
+
 
         apply {
             if (standard_metadata.ingress_port == CPU_PORT) {

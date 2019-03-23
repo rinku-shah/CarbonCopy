@@ -24,6 +24,8 @@ public class Constants {
   static boolean BITWISE_DEBUG = false;
   static int WRITE = 2;
 	static int WRITE_REPLY = 3;
+	static int WRITE_CLONE = 4;
+	static int WRITE_CLONE_REPLY = 5;
 	static int SWO = 7;
 
 

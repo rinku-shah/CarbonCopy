@@ -40,7 +40,7 @@ control c_ingress(inout headers hdr,
 
 
         /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<128> value) {
+        action reply_to_read(bit<32> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
@@ -76,8 +76,11 @@ control c_ingress(inout headers hdr,
                 if(kv_store.apply().hit){
                     return;
                 }
+                else{
+                    // Code for READ NOT FOUND
+                }
             }
-            if(hdr.data.type_sync==WRITE){
+            else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
                 egressSpec_t secondary_port = 2;
                 standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
@@ -110,21 +113,8 @@ control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
-        direct_counter(CounterType.packets_and_bytes) dummy_counter;
-        table dummy {
-            key = {
-                hdr.data.key1 : exact; /* Do an exact match on the key */
-            }
-            actions = {
-                NoAction;
-            }
-            counters = dummy_counter;
-        }
-
-
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
-            dummy.apply();
             hdr.data.type_sync = WRITE_CLONE;
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
