@@ -1,0 +1,4 @@
+/* Send it to the local controller for rule insertion */
+standard_metadata.egress_spec = CPU_PORT;
+hdr.packet_in.setValid();
+hdr.packet_in.ingress_port = standard_metadata.ingress_port;
