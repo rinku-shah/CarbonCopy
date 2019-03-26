@@ -294,8 +294,8 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 			log.info("***************** Device Removed : " + devId.toString() + " ******************");
                 			dev[i] = false;
                 			if (i==1) {
-                				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
-                				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+                				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e4276b4L).array();
+                				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ef1c877L).array();
                 				RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(3),sec_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(3),sec_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
@@ -315,8 +315,8 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 		dev[i] = true;
                 		log.info("***************** Device Added : " + devId.toString() + " **********************");
                 		if (i==3) {
-                			byte [] prim_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ea84e01L).array();
-					        byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+                			byte [] prim_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ebcc799L).array();
+					        byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ef1c877L).array();
 
 
 					        // String primary = new String(prim_mac, StandardCharsets.UTF_8);

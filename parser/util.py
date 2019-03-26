@@ -4,7 +4,7 @@
 
 KEYWORDS = {
     'apply'     :   'apply {',
-    'write_sync':   '@pcube_write_sync',
+    'write_async':   '@pcube_write_async',
     'for'		:	'@pcube_for',
     'endfor'	:	'@pcube_endfor',
     'compare'	:	'@pcube_minmax',

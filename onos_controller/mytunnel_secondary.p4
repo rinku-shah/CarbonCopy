@@ -74,9 +74,8 @@ control c_ingress(inout headers hdr,
                 kv_store.apply();
                 return;
             }
-            else if(hdr.data.type_sync==WRITE_CLONE){
+            else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
-
 
                 /* Send it to the local controller for rule insertion */
                 standard_metadata.egress_spec = CPU_PORT;

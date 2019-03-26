@@ -61,9 +61,7 @@ control c_ingress(inout headers hdr,
             }
             if(hdr.data.type_sync==PUT){
                 // Some pre-pended code Here writtern by user
-
-                @pcube_write_sync();
-                // @pcube_write_async();
+                @pcube_write_async();
             }
 
             // Update port counters at index = ingress or egress port.

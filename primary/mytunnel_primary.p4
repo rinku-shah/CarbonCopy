@@ -115,7 +115,6 @@ control c_egress(inout headers hdr,
 
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
-            hdr.data.type_sync = WRITE_CLONE;
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
             hdr.ethernet.dstAddr = sec_mac;

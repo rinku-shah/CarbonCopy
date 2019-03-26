@@ -94,13 +94,14 @@ control c_ingress(inout headers hdr,
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
             }
-            else if(hdr.data.type_sync==WRITE_CLONE_REPLY){
+            if(hdr.data.type_sync==WRITE_CLONE_REPLY){
                 hdr.data.type_sync = WRITE_REPLY;
                 // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
                 // when more WRITE packets of same key come on short time.
                 egressSpec_t temp = 1;
                 standard_metadata.egress_spec = temp;
             }
+
 
                             // Update port counters at index = ingress or egress port.
              if (standard_metadata.egress_spec < MAX_PORTS) {

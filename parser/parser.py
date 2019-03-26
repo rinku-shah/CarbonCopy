@@ -18,38 +18,39 @@ class p4_code_generator():
 
     def __init__(self, src, dest,dest2, filename,folder):
         self.src = src
-        self.primarywritesync = dest + ".writesync"
-        self.secondarywritesync = dest2 + ".writesync"
+        self.primarywriteasync = dest + ".writeasync"
+        self.secondarywriteasync = dest2 + ".writeasync"
         self.primary = dest
         self.FOLDER = folder
         self.secondary = dest2
         self.tempfiles = [
-            self.primarywritesync,
-            self.secondarywritesync
+            self.primarywriteasync,
+            self.secondarywriteasync
         ]
 
     def expand(self):
-        self.expand_write_sync()
+        self.expand_write_async()
         self.add_apply()
         for f in self.tempfiles:
             os.system('rm -f %s' % f)
 
-    def expand_write_sync(self):
+    def expand_write_async(self):
         sfile = open(self.src,'r')
-        dfile = open(self.primarywritesync,'w')
-        d2file = open(self.secondarywritesync,'w')
+        dfile = open(self.primarywriteasync,'w')
+        d2file = open(self.secondarywriteasync,'w')
 
         # Loop through ip4 source
         for row in sfile:
+            
             # Collect CONSTANTS
-            if KEYWORDS['write_sync'] in row:
+            if KEYWORDS['write_async'] in row:
                 indent = row[:-len(row.lstrip())]
 
-                temp = open(self.FOLDER + "/" + "primary_write_sync.txt",'r').read()
+                temp = open(self.FOLDER + "/" + "primary_write_async.txt",'r').read()
                 temp = temp.replace("\n","\n" + indent)
                 dfile.write(indent + temp)
 
-                temp = open(self.FOLDER + "/" + "secondary_write_sync.txt",'r').read()
+                temp = open(self.FOLDER + "/" + "secondary_write_async.txt",'r').read()
                 temp = temp.replace("\n","\n" + indent)
                 d2file.write(indent + temp)
 
@@ -61,8 +62,8 @@ class p4_code_generator():
         dfile.close()
 
     def add_apply(self):
-        sfile = open(self.primarywritesync,'r')
-        s2file = open(self.secondarywritesync,'r')
+        sfile = open(self.primarywriteasync,'r')
+        s2file = open(self.secondarywriteasync,'r')
         dfile = open(self.primary,'w')
         d2file = open(self.secondary,'w')
         foundIngress = False;
@@ -135,4 +136,4 @@ if __name__ == '__main__':
     code_gen = p4_code_generator(src,dest,dest2,filename,folder)
     code_gen.expand()
 
-    # generate_sync_header(p4src_folder, filename)
+    # generate_async_header(p4src_folder, filename)

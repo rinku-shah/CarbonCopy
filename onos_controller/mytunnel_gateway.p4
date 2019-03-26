@@ -56,11 +56,6 @@ control c_ingress(inout headers hdr,
 
         apply {
 
-              if (hdr.data.type_sync == SWO) {
-                send_to_cpu();
-                return;
-              }
-
               gateway_forward.apply();
               if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);

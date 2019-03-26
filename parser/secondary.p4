@@ -67,13 +67,11 @@ control c_ingress(inout headers hdr,
             }
             if(hdr.data.type_sync==PUT){
                 // Some pre-pended code Here writtern by user
-
                 /* Send it to the local controller for rule insertion */
                 standard_metadata.egress_spec = CPU_PORT;
                 hdr.packet_in.setValid();
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
-                                // @pcube_write_async();
-            }
+                            }
 
             // Update port counters at index = ingress or egress port.
             if (standard_metadata.egress_spec < MAX_PORTS) {
