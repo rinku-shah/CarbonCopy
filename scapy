@@ -1,32 +1,22 @@
-class Write2(Packet):
+class Write(Packet):
 	name = "data "
 	fields_desc = [ByteField("type_sync", 2),
-				   IntField("key1", 0),
-				   IntField("key2", 0),
-			           IntField("key3", 0),
-				   IntField("key4", 2),
-				   IntField("key1", 0),
-                                   IntField("key1", 0),
-                                   IntField("value1", 0),
+				   IntField("key", 2),
 				   IntField("value", 4),
 				   ByteField("version", 1)]
 # d=Data( )
-sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Data( ), iface="eth2")
+sendp(Ether()/IP(dst="192.168.1.2")/UDP()/Write( ), iface="eth1")
+sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Write( ), iface="eth2")
 
 
 
 
-class Read2(Packet):
+class Read(Packet):
 	name = "data "
 	fields_desc = [ByteField("type_sync", 6),
-				   IntField("key1", 0),
-				   IntField("key2", 0),
-			           IntField("key3", 0),
-				   IntField("key4", 2),
-				   IntField("key1", 0),
-                                   IntField("key1", 0),
-                                   IntField("value1", 0),
+				   IntField("key", 2),
 				   IntField("value", 11),
 				   ByteField("version", 1)]
 # d=Data( )
-sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Data(), iface="eth2")
+sendp(Ether()/IP(dst="192.168.1.2")/UDP()/Read(), iface="eth1")
+sendp(Ether()/IP(dst="192.168.2.2")/UDP()/Read( ), iface="eth2")

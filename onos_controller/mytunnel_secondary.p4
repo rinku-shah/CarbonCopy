@@ -35,7 +35,7 @@ control c_ingress(inout headers hdr,
         }
 
         /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<128> value) {
+        action reply_to_read(bit<32> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
@@ -66,7 +66,7 @@ control c_ingress(inout headers hdr,
             // @ps
             // hdr.our_header.type = WRITE_REPLY
             // @pe
-            
+
             return;
 
             }
@@ -74,9 +74,8 @@ control c_ingress(inout headers hdr,
                 kv_store.apply();
                 return;
             }
-            else if(hdr.data.type_sync==WRITE_CLONE){
+            else if(hdr.data.type_sync==WRITE){
                 /* If this is primary switch, then packet has to be cloned */
-
 
                 /* Send it to the local controller for rule insertion */
                 standard_metadata.egress_spec = CPU_PORT;

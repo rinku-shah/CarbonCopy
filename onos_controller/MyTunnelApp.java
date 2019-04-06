@@ -143,7 +143,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
 
     private static final Logger log = getLogger(MyTunnelApp.class);
 
-    
+
     //--------------------------------------------------------------------------
     // ONOS core services needed by this application.
     //--------------------------------------------------------------------------
@@ -173,7 +173,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
     @Reference(cardinality = ReferenceCardinality.MANDATORY_UNARY)
     protected PacketService packetService;
 
-    private ReactivePacketProcessor processor = new ReactivePacketProcessor();
+    // private ReactivePacketProcessor processor = new ReactivePacketProcessor();
 
     private int counter = 0;
 
@@ -188,7 +188,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
     public MyTunnelApp() {
         super(new ProviderId("mytunnel", "org.onosproject.p4tutorial.mytunnel"));
 	}
-    
+
 
 
     //--------------------------------------------------------------------------
@@ -201,7 +201,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
         log.info("============= Starting... =====================");
 
         appId = coreService.registerApplication(APP_NAME);
-        packetService.addProcessor(processor, PacketProcessor.director(2));
+        // packetService.addProcessor(processor, PacketProcessor.director(2));
         deviceService.addListener(deviceListener);
 		linkService.addListener(linkListener);
 		providerService = registry.register(this);
@@ -228,7 +228,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
 
         // hostService.removeListener(hostListener);
         flowRuleService.removeFlowRulesById(appId);
-        packetService.removeProcessor(processor);
+        // packetService.removeProcessor(processor);
         log.info("STOPPED");
     }
 
@@ -294,8 +294,8 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 			log.info("***************** Device Removed : " + devId.toString() + " ******************");
                 			dev[i] = false;
                 			if (i==1) {
-                				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
-                				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+                				byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e4276b4L).array();
+                				byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ef1c877L).array();
                 				RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(3),sec_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(3),sec_mac);
 			                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
@@ -306,7 +306,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 	}
                 }
 
-            } 
+            }
             else if (type == DeviceEvent.Type.DEVICE_ADDED) {
                 // processPortLinks(device, event.port());
                 log.info("------------- Device added -------------");
@@ -315,9 +315,9 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 		dev[i] = true;
                 		log.info("***************** Device Added : " + devId.toString() + " **********************");
                 		if (i==3) {
-                			byte [] prim_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ea84e01L).array();
-					        byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
-					        
+                			byte [] prim_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ebcc799L).array();
+					        byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163ef1c877L).array();
+
 
 					        // String primary = new String(prim_mac, StandardCharsets.UTF_8);
 					        // String load_gen = new String(lg_mac, StandardCharsets.UTF_8);
@@ -350,290 +350,290 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
         }
 	}
 
-    /**
-     * Packet processor responsible for forwarding packets along their paths.
-     */
-    private class ReactivePacketProcessor implements PacketProcessor {
-
-      // Rule_insertion RI = new Rule_insertion();
-
-        @Override
-        public void process(PacketContext context) {
-            // Stop processing if the packet has been handled, since we
-            // can't do any more to it.
-
-            if (context.isHandled()) {
-               log.info("context is already handled");
-                return;
-            }
-
-            log.info("Got the Pcaket");
-
-            InboundPacket pkt = context.inPacket();
-            ConnectPoint connectPoint = pkt.receivedFrom();
-            DeviceId deviceId = pkt.receivedFrom().deviceId();
-            if(Constants.DEBUG) {
-                log.warn("Packet received from {}", connectPoint);
-                log.warn("Device ID {}", deviceId);
-                log.warn("Packet details {}", pkt);
-            }
-            // parse the incoming packet as Ethernet frame
-            Ethernet ethPkt = pkt.parsed();
-
-            // Bail if this is deemed to be a control packet.
-            if (isControlPacket(ethPkt)) {
-                return;
-            }
-
-            HostId id = HostId.hostId(ethPkt.getDestinationMAC());
-
-            // Do not process LLDP MAC address in any way.
-            if (id.mac().isLldp()) {
-                return;
-            }
-
-            // Do not process IPv4 multicast packets, let mfwd handle them
-            if (ethPkt.getEtherType() == Ethernet.TYPE_IPV4) {
-                if (id.mac().isMulticast()) {
-                    return;
-                }
-            }
-            // Filter out ARP packets
-            if (ethPkt.getEtherType() == Ethernet.TYPE_ARP) {
-                return;
-            }
-
-            /****************   PARSE Ethernet srcMAC and dstMAC ***************************/
-            MacAddress srcMac = ethPkt.getSourceMAC();
-            MacAddress dstMac = ethPkt.getDestinationMAC();
-            //            log.warn("srcMACAddrestype = {}",ethPkt.getSourceMAC().getClass().getName());
-            if(Constants.DEBUG) {
-                log.warn("srcMACAddres = {}", srcMac);
-                log.warn("dstMACAddres = {}", dstMac);
-            }
-           log.warn("srcMACAddres = {}",dstMac.getClass().getName());     // gives org.onlab.packet.MacAddress
-
-
-            //parse the incoming packet as IP packet
-            IPacket ipPkt = pkt.parsed();
-            // ipheader will have IPv4 header
-            IPacket ipheader = ipPkt.getPayload();
-            // tcp_udp_header will have tcp/udp header
-            IPacket tcp_udp_header = ipheader.getPayload();
-            // final_payload will have actual payload of the packet
-            IPv4 tmp_ipv4Packet = (IPv4) ipPkt.getPayload();
-            int srcAddress = tmp_ipv4Packet.getSourceAddress();
-            String srcIPAddr = tmp_ipv4Packet.fromIPv4Address(srcAddress);
-
-            byte protocol = tmp_ipv4Packet.getProtocol();
-            IPacket final_payload = tcp_udp_header.getPayload(); 
-            if (protocol == IPv4.PROTOCOL_UDP) {
-                if(Constants.DEBUG){
-                    log.info("received non-UDP packet. Returning ");
-                    }
-                
-            }
-            else {
-                return;
-            }            
-            
-
-            byte ipv4Protocol=IPv4.PROTOCOL_UDP;
-            int ipv4SourceAddress = 0;
-            int ipv4DstAddress = 0;
-            int udp_srcport=0;
-            int udp_dstport=0;
-            int tcp_srcport=0;
-            int tcp_dstport=0;
-            String DGW_IPAddr = "";
-            int sgw_teid = 0;
-            int outPort = 0;
-
-            /****************   PARSE Ipv4 SrcIP and DstIP ***************************/
-
-            if (ethPkt.getEtherType() == Ethernet.TYPE_IPV4) {
-                IPv4 ipv4Packet = (IPv4) ipPkt.getPayload();
-                ipv4Protocol = ipv4Packet.getProtocol();
-                ipv4SourceAddress = ipv4Packet.getSourceAddress();
-                ipv4DstAddress = ipv4Packet.getDestinationAddress();
-                Ip4Prefix matchIp4SrcPrefix =
-                        Ip4Prefix.valueOf(ipv4Packet.getSourceAddress(),
-                                          Ip4Prefix.MAX_MASK_LENGTH);
-                Ip4Prefix matchIp4DstPrefix =
-                        Ip4Prefix.valueOf(ipv4Packet.getDestinationAddress(),
-                                          Ip4Prefix.MAX_MASK_LENGTH);
-
-                 DGW_IPAddr = ipv4Packet.fromIPv4Address(ipv4SourceAddress);  // returns string IP of DGW_IPAddr
-
-                //    log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
-                //    log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
-
-
-
-//            log.warn("ipv4srcAddrestype = {}",matchIp4SrcPrefix.getClass().getName());  // gives org.onlab.packet.Ip4Prefix
-                if(Constants.DEBUG) {
-                   log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
-                   log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
-//                    log.warn("ipv4Packet class = {}",ipv4Packet.getClass().getName());
-//                    log.warn("ipv4SourceAddress value = {}",ipv4SourceAddress);
-//                    log.warn("dstip clas = {}",dstip.getClass().getName());
-                }
-
-
-                /****************   PARSE TCP SrcPort and DstPort ***************************/
-
-                if (ipv4Protocol == IPv4.PROTOCOL_TCP) {
-                    TCP tcpPacket = (TCP) ipv4Packet.getPayload();
-                    tcp_srcport = tcpPacket.getSourcePort();
-                    tcp_dstport = tcpPacket.getDestinationPort();
-                    if (Constants.DEBUG) {
-                        log.warn("TCP srcPort = {}", tcp_srcport);
-                        log.warn("TCP dstPort = {}", tcp_dstport);
-                    }
-                }
-                /****************   PARSE UDP SrcPort and DstPort ***************************/
-
-                if (ipv4Protocol == IPv4.PROTOCOL_UDP) {
-                    UDP udpPacket = (UDP) ipv4Packet.getPayload();
-                    udp_srcport = udpPacket.getSourcePort();
-                    udp_dstport = udpPacket.getDestinationPort();
-                    if(Constants.DEBUG) {
-                        log.warn("UDP srcPort = {}", udp_srcport);
-                        log.warn("UDP dstPort = {}", udp_dstport);
-                    }
-                }
-                if (ipv4Protocol == IPv4.PROTOCOL_ICMP) {
-                    if(Constants.DEBUG){
-                        log.info("received ICMP packet returning ");
-                        }
-                        return;
-                }
-            }
-        
-            if (!srcIPAddr.equals("192.168.100.100")) {
-                String payload;
-                if(Constants.BITWISE_DEBUG){
-                    log.warn("payload direct = {}",((Data)final_payload).getData());
-                }
-                byte[] p =((Data)final_payload).getData();
-
-                byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
-                byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
-                byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
-                byte [] b4 = Arrays.copyOfRange(p, 33, 34); //value
-                
-
-                byte code = ByteBuffer.wrap(b1).get();
-                int type = code;
-                String key1 = new String(b2, StandardCharsets.UTF_8); //16 byte
-                      String value = new String(b3, StandardCharsets.UTF_8); //16 byte
-
-
-                ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
-                // int first = bb.getShort(); //pull off a 16 bit short (1, 5)
-                // int second = bb.get(); //pull off the next byte (5)
-                // log.warn("msg id  = {}",second);
-                // String third = Integer.toString(bb.getInt()); //pull off the next 32 bit int (0, 1, 0, 5)
-                // log.warn("sep = {}",third);
-                // System.out.println(first + " " + second + " " + third);
-                payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
-                if (ethPkt == null) {
-                    return;
-                }
-                else{
-    //                log.warn("Packet contains !!!!! {}",ethPkt.toString());
-                    // if(Constants.DEBUG) {
-                    if(Constants.DEBUG) {
-                        log.warn(" {}", ipheader);
-                        log.warn(" {}", tcp_udp_header);
-                        log.warn("Packet payload = {}",payload);
-
-                    }
-                    // returns org.onlab.packet.Data as type of final_payload
-                    // final_payload is ASCII encoded bytearray
-    //                log.warn("Packet contains ????? {}",final_payload.getClass().getName());    // gives org.onlab.packet.Data
-                }
-
-                String response;
-                byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
-                byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
-                if(type == Constants.SWO){
-                    if (Constants.DEBUG) {
-                        log.warn("================= Inserting NEW entry ==============");
-                    }
-                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),sec_mac);
-                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),sec_mac);
-                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
-                    RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
-                  // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
-                }
-
-            }
-            else {
-                    if(Constants.DEBUG){
-                        log.info("received non-UDP packet. Returning ");
-                    }
-                return;
-            }
-        }
-
-
-        // private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
-        //   log.warn("Here .....");
-        //     Data payload_data = new Data();
-        //     payload_data.setData(response.toString().getBytes());
-        //     UDP udp = new UDP();
-        //     udp.setSourcePort(udp_dstport);
-        //     udp.setDestinationPort(udp_srcport);
-        //     udp.setPayload(payload_data);
-
-        //     IPv4 ip_pkt = new IPv4();
-        //     byte ttl = 64;
-        //     ip_pkt.setDestinationAddress(ipv4SourceAddress);
-        //     ip_pkt.setSourceAddress(Constants.CONTROLLER_IP);   // controller IP is hardcoded in Constants.java file
-        //     ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
-        //     ip_pkt.setTtl(ttl);
-        //     ip_pkt.setPayload(udp);
-
-
-        //     if(Constants.DEBUG){
-        //         log.warn("sending payload as = {}",response);
-        //         log.warn("Sending IP header as  : {}",ip_pkt);
-        //     }
-
-        //     Ethernet ethernet = new Ethernet();
-        //     ethernet.setEtherType(Ethernet.TYPE_IPV4)
-        //             .setDestinationMACAddress(srcMac)
-        //             .setSourceMACAddress(dstMac)
-        //             .setPayload(ip_pkt);
-        //             if(Constants.DEBUG){
-        //                 log.warn("1 sending payload as = {}",response);
-        //                 log.warn("1 Sending IP header as  : {}",ip_pkt);
-        //             }
-
-        //     TrafficTreatment treatment = DefaultTrafficTreatment.builder()
-        //             .setOutput(connectPoint.port())
-        //             .build();
-        //             if(Constants.DEBUG){
-        //                 log.warn("2 sending payload as = {}",response);
-        //                 log.warn("2 Sending IP header as  : {}",ip_pkt);
-        //             }
-        //     OutboundPacket outboundPacket =
-        //             new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
-        //                                       ByteBuffer.wrap(ethernet.serialize()));
-        //     if(Constants.DEBUG) {
-        //       log.warn("Processing outbound packet: {}", outboundPacket);
-        //         log.warn("Ethernet packet: {}", ethernet);
-        //     }
-
-        //     packetService.emit(outboundPacket);
-
-        // }
-
-        // Indicates whether this is a control packet, e.g. LLDP, BDDP
-        private boolean isControlPacket(Ethernet eth) {
-            short type = eth.getEtherType();
-            return type == Ethernet.TYPE_LLDP || type == Ethernet.TYPE_BSN;
-        }
-    }
+//     /**
+//      * Packet processor responsible for forwarding packets along their paths.
+//      */
+//     private class ReactivePacketProcessor implements PacketProcessor {
+//
+//       // Rule_insertion RI = new Rule_insertion();
+//
+//         @Override
+//         public void process(PacketContext context) {
+//             // Stop processing if the packet has been handled, since we
+//             // can't do any more to it.
+//
+//             if (context.isHandled()) {
+//                log.info("context is already handled");
+//                 return;
+//             }
+//
+//             log.info("Got the Pcaket");
+//
+//             InboundPacket pkt = context.inPacket();
+//             ConnectPoint connectPoint = pkt.receivedFrom();
+//             DeviceId deviceId = pkt.receivedFrom().deviceId();
+//             if(Constants.DEBUG) {
+//                 log.warn("Packet received from {}", connectPoint);
+//                 log.warn("Device ID {}", deviceId);
+//                 log.warn("Packet details {}", pkt);
+//             }
+//             // parse the incoming packet as Ethernet frame
+//             Ethernet ethPkt = pkt.parsed();
+//
+//             // Bail if this is deemed to be a control packet.
+//             if (isControlPacket(ethPkt)) {
+//                 return;
+//             }
+//
+//             HostId id = HostId.hostId(ethPkt.getDestinationMAC());
+//
+//             // Do not process LLDP MAC address in any way.
+//             if (id.mac().isLldp()) {
+//                 return;
+//             }
+//
+//             // Do not process IPv4 multicast packets, let mfwd handle them
+//             if (ethPkt.getEtherType() == Ethernet.TYPE_IPV4) {
+//                 if (id.mac().isMulticast()) {
+//                     return;
+//                 }
+//             }
+//             // Filter out ARP packets
+//             if (ethPkt.getEtherType() == Ethernet.TYPE_ARP) {
+//                 return;
+//             }
+//
+//             /****************   PARSE Ethernet srcMAC and dstMAC ***************************/
+//             MacAddress srcMac = ethPkt.getSourceMAC();
+//             MacAddress dstMac = ethPkt.getDestinationMAC();
+//             //            log.warn("srcMACAddrestype = {}",ethPkt.getSourceMAC().getClass().getName());
+//             if(Constants.DEBUG) {
+//                 log.warn("srcMACAddres = {}", srcMac);
+//                 log.warn("dstMACAddres = {}", dstMac);
+//             }
+//            log.warn("srcMACAddres = {}",dstMac.getClass().getName());     // gives org.onlab.packet.MacAddress
+//
+//
+//             //parse the incoming packet as IP packet
+//             IPacket ipPkt = pkt.parsed();
+//             // ipheader will have IPv4 header
+//             IPacket ipheader = ipPkt.getPayload();
+//             // tcp_udp_header will have tcp/udp header
+//             IPacket tcp_udp_header = ipheader.getPayload();
+//             // final_payload will have actual payload of the packet
+//             IPv4 tmp_ipv4Packet = (IPv4) ipPkt.getPayload();
+//             int srcAddress = tmp_ipv4Packet.getSourceAddress();
+//             String srcIPAddr = tmp_ipv4Packet.fromIPv4Address(srcAddress);
+//
+//             byte protocol = tmp_ipv4Packet.getProtocol();
+//             IPacket final_payload = tcp_udp_header.getPayload();
+//             if (protocol == IPv4.PROTOCOL_UDP) {
+//                 if(Constants.DEBUG){
+//                     log.info("received non-UDP packet. Returning ");
+//                     }
+//
+//             }
+//             else {
+//                 return;
+//             }
+//
+//
+//             byte ipv4Protocol=IPv4.PROTOCOL_UDP;
+//             int ipv4SourceAddress = 0;
+//             int ipv4DstAddress = 0;
+//             int udp_srcport=0;
+//             int udp_dstport=0;
+//             int tcp_srcport=0;
+//             int tcp_dstport=0;
+//             String DGW_IPAddr = "";
+//             int sgw_teid = 0;
+//             int outPort = 0;
+//
+//             /****************   PARSE Ipv4 SrcIP and DstIP ***************************/
+//
+//             if (ethPkt.getEtherType() == Ethernet.TYPE_IPV4) {
+//                 IPv4 ipv4Packet = (IPv4) ipPkt.getPayload();
+//                 ipv4Protocol = ipv4Packet.getProtocol();
+//                 ipv4SourceAddress = ipv4Packet.getSourceAddress();
+//                 ipv4DstAddress = ipv4Packet.getDestinationAddress();
+//                 Ip4Prefix matchIp4SrcPrefix =
+//                         Ip4Prefix.valueOf(ipv4Packet.getSourceAddress(),
+//                                           Ip4Prefix.MAX_MASK_LENGTH);
+//                 Ip4Prefix matchIp4DstPrefix =
+//                         Ip4Prefix.valueOf(ipv4Packet.getDestinationAddress(),
+//                                           Ip4Prefix.MAX_MASK_LENGTH);
+//
+//                  DGW_IPAddr = ipv4Packet.fromIPv4Address(ipv4SourceAddress);  // returns string IP of DGW_IPAddr
+//
+//                 //    log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
+//                 //    log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
+//
+//
+//
+// //            log.warn("ipv4srcAddrestype = {}",matchIp4SrcPrefix.getClass().getName());  // gives org.onlab.packet.Ip4Prefix
+//                 if(Constants.DEBUG) {
+//                    log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
+//                    log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
+// //                    log.warn("ipv4Packet class = {}",ipv4Packet.getClass().getName());
+// //                    log.warn("ipv4SourceAddress value = {}",ipv4SourceAddress);
+// //                    log.warn("dstip clas = {}",dstip.getClass().getName());
+//                 }
+//
+//
+//                 /****************   PARSE TCP SrcPort and DstPort ***************************/
+//
+//                 if (ipv4Protocol == IPv4.PROTOCOL_TCP) {
+//                     TCP tcpPacket = (TCP) ipv4Packet.getPayload();
+//                     tcp_srcport = tcpPacket.getSourcePort();
+//                     tcp_dstport = tcpPacket.getDestinationPort();
+//                     if (Constants.DEBUG) {
+//                         log.warn("TCP srcPort = {}", tcp_srcport);
+//                         log.warn("TCP dstPort = {}", tcp_dstport);
+//                     }
+//                 }
+//                 /****************   PARSE UDP SrcPort and DstPort ***************************/
+//
+//                 if (ipv4Protocol == IPv4.PROTOCOL_UDP) {
+//                     UDP udpPacket = (UDP) ipv4Packet.getPayload();
+//                     udp_srcport = udpPacket.getSourcePort();
+//                     udp_dstport = udpPacket.getDestinationPort();
+//                     if(Constants.DEBUG) {
+//                         log.warn("UDP srcPort = {}", udp_srcport);
+//                         log.warn("UDP dstPort = {}", udp_dstport);
+//                     }
+//                 }
+//                 if (ipv4Protocol == IPv4.PROTOCOL_ICMP) {
+//                     if(Constants.DEBUG){
+//                         log.info("received ICMP packet returning ");
+//                         }
+//                         return;
+//                 }
+//             }
+//
+//             if (!srcIPAddr.equals("192.168.100.100")) {
+//                 String payload;
+//                 if(Constants.BITWISE_DEBUG){
+//                     log.warn("payload direct = {}",((Data)final_payload).getData());
+//                 }
+//                 byte[] p =((Data)final_payload).getData();
+//
+//                 byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
+//                 byte [] b2 = Arrays.copyOfRange(p, 1, 17); //key
+//                 byte [] b3 = Arrays.copyOfRange(p, 17, 33); //value
+//                 byte [] b4 = Arrays.copyOfRange(p, 33, 34); //value
+//
+//
+//                 byte code = ByteBuffer.wrap(b1).get();
+//                 int type = code;
+//                 String key1 = new String(b2, StandardCharsets.UTF_8); //16 byte
+//                       String value = new String(b3, StandardCharsets.UTF_8); //16 byte
+//
+//
+//                 ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
+//                 // int first = bb.getShort(); //pull off a 16 bit short (1, 5)
+//                 // int second = bb.get(); //pull off the next byte (5)
+//                 // log.warn("msg id  = {}",second);
+//                 // String third = Integer.toString(bb.getInt()); //pull off the next 32 bit int (0, 1, 0, 5)
+//                 // log.warn("sep = {}",third);
+//                 // System.out.println(first + " " + second + " " + third);
+//                 payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
+//                 if (ethPkt == null) {
+//                     return;
+//                 }
+//                 else{
+//     //                log.warn("Packet contains !!!!! {}",ethPkt.toString());
+//                     // if(Constants.DEBUG) {
+//                     if(Constants.DEBUG) {
+//                         log.warn(" {}", ipheader);
+//                         log.warn(" {}", tcp_udp_header);
+//                         log.warn("Packet payload = {}",payload);
+//
+//                     }
+//                     // returns org.onlab.packet.Data as type of final_payload
+//                     // final_payload is ASCII encoded bytearray
+//     //                log.warn("Packet contains ????? {}",final_payload.getClass().getName());    // gives org.onlab.packet.Data
+//                 }
+//
+//                 String response;
+//                 byte [] sec_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e0c3710L).array();
+//                 byte [] lg_mac = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(0x00163e7867d6L).array();
+//                 if(type == Constants.SWO){
+//                     if (Constants.DEBUG) {
+//                         log.warn("================= Inserting NEW entry ==============");
+//                     }
+//                     RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(6),Integer.toString(2),sec_mac);
+//                     RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(2),Integer.toString(2),sec_mac);
+//                     RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(1),Integer.toString(1),lg_mac);
+//                     RI.populate_gf(appId,flowRuleService,deviceId,Integer.toString(3),Integer.toString(1),lg_mac);
+//                   // build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+//                 }
+//
+//             }
+//             else {
+//                     if(Constants.DEBUG){
+//                         log.info("received non-UDP packet. Returning ");
+//                     }
+//                 return;
+//             }
+//         }
+//
+//
+//         // private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+//         //   log.warn("Here .....");
+//         //     Data payload_data = new Data();
+//         //     payload_data.setData(response.toString().getBytes());
+//         //     UDP udp = new UDP();
+//         //     udp.setSourcePort(udp_dstport);
+//         //     udp.setDestinationPort(udp_srcport);
+//         //     udp.setPayload(payload_data);
+//
+//         //     IPv4 ip_pkt = new IPv4();
+//         //     byte ttl = 64;
+//         //     ip_pkt.setDestinationAddress(ipv4SourceAddress);
+//         //     ip_pkt.setSourceAddress(Constants.CONTROLLER_IP);   // controller IP is hardcoded in Constants.java file
+//         //     ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
+//         //     ip_pkt.setTtl(ttl);
+//         //     ip_pkt.setPayload(udp);
+//
+//
+//         //     if(Constants.DEBUG){
+//         //         log.warn("sending payload as = {}",response);
+//         //         log.warn("Sending IP header as  : {}",ip_pkt);
+//         //     }
+//
+//         //     Ethernet ethernet = new Ethernet();
+//         //     ethernet.setEtherType(Ethernet.TYPE_IPV4)
+//         //             .setDestinationMACAddress(srcMac)
+//         //             .setSourceMACAddress(dstMac)
+//         //             .setPayload(ip_pkt);
+//         //             if(Constants.DEBUG){
+//         //                 log.warn("1 sending payload as = {}",response);
+//         //                 log.warn("1 Sending IP header as  : {}",ip_pkt);
+//         //             }
+//
+//         //     TrafficTreatment treatment = DefaultTrafficTreatment.builder()
+//         //             .setOutput(connectPoint.port())
+//         //             .build();
+//         //             if(Constants.DEBUG){
+//         //                 log.warn("2 sending payload as = {}",response);
+//         //                 log.warn("2 Sending IP header as  : {}",ip_pkt);
+//         //             }
+//         //     OutboundPacket outboundPacket =
+//         //             new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
+//         //                                       ByteBuffer.wrap(ethernet.serialize()));
+//         //     if(Constants.DEBUG) {
+//         //       log.warn("Processing outbound packet: {}", outboundPacket);
+//         //         log.warn("Ethernet packet: {}", ethernet);
+//         //     }
+//
+//         //     packetService.emit(outboundPacket);
+//
+//         // }
+//
+//         // Indicates whether this is a control packet, e.g. LLDP, BDDP
+//         private boolean isControlPacket(Ethernet eth) {
+//             short type = eth.getEtherType();
+//             return type == Ethernet.TYPE_LLDP || type == Ethernet.TYPE_BSN;
+//         }
+//     }
 }

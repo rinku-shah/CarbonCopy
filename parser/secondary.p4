@@ -6,8 +6,6 @@
 #include "include/definitions.p4"
 #define MAX_PORTS 255
 
-#define IS_I2E_CLONE(std_meta) (std_meta.instance_type == BMV2_V1MODEL_INSTANCE_TYPE_INGRESS_CLONE)
-
 
 // ---------------- INGRESS ---------------------------------------
 
@@ -20,11 +18,8 @@ control c_ingress(inout headers hdr,
         counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
 
         action ipv4_forward(egressSpec_t port) {
-
             standard_metadata.egress_spec = port;
-
         }
-
 
         action send_to_cpu() {
             standard_metadata.egress_spec = CPU_PORT;
@@ -39,14 +34,11 @@ control c_ingress(inout headers hdr,
 
 
         /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<32> value) {
-            hdr.data.type_sync = READ_REPLY;
+        action reply_to_read(bit<128> value) {
+            hdr.data.type_sync = GET_REPLY;
             hdr.data.value = value;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
         }
-
-        // direct_counter(CounterType.packets_and_bytes) kv_store_counter;
-
 
         table kv_store {
             key = {
@@ -58,58 +50,37 @@ control c_ingress(inout headers hdr,
                 NoAction;
             }
             default_action = NoAction();
-            // counters = kv_store_counter;
         }
-
-
 
         apply {
             if (standard_metadata.ingress_port == CPU_PORT) {
-            // Packet received from CPU_PORT, this is a packet-out sent by the controller. Set the egress port as requested by the controller (packet_out header) and remove the packet_out header.
-            standard_metadata.egress_spec = hdr.packet_out.egress_port;
-            hdr.packet_out.setInvalid();
-            return;
-
+                  // Packet received from CPU_PORT, this is a packet-out sent by the controller. Set the egress port as requested by the controller (packet_out header) and remove the packet_out header.
+                  standard_metadata.egress_spec = hdr.packet_out.egress_port;
+                  hdr.packet_out.setInvalid();
+                  return;
             }
-            else if(hdr.data.type_sync==READ){
+                        if(hdr.data.type_sync==GET){
                 if(kv_store.apply().hit){
                     return;
                 }
-                else{
-                    // Code for READ NOT FOUND
-                }
+                return;
             }
-            else if(hdr.data.type_sync==WRITE){
-                /* If this is primary switch, then packet has to be cloned */
-                egressSpec_t secondary_port = 2;
-                standard_metadata.egress_spec = secondary_port;  /* Specify the port here */
-                clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, standard_metadata); /* Clone the packet */
-
-
+            if(hdr.data.type_sync==PUT){
+                // Some pre-pended code Here writtern by user
                 /* Send it to the local controller for rule insertion */
-                // egressSpec_t port = 3;
-                // standard_metadata.egress_spec = port;
                 standard_metadata.egress_spec = CPU_PORT;
                 hdr.packet_in.setValid();
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
-                return;
-            }
-            if(hdr.data.type_sync==WRITE_CLONE_REPLY){
-                hdr.data.type_sync = WRITE_REPLY;
-                // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
-                // when more WRITE packets of same key come on short time.
-                egressSpec_t temp = 1;
-                standard_metadata.egress_spec = temp;
+                            }
+
+            // Update port counters at index = ingress or egress port.
+            if (standard_metadata.egress_spec < MAX_PORTS) {
+             tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
             }
 
-
-                            // Update port counters at index = ingress or egress port.
-             if (standard_metadata.egress_spec < MAX_PORTS) {
-                 tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
-             }
-             if (standard_metadata.ingress_port < MAX_PORTS) {
-                 rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
-             }
+            if (standard_metadata.ingress_port < MAX_PORTS) {
+             rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
+            }
 
         }
 }
@@ -121,29 +92,8 @@ control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
-        direct_counter(CounterType.packets_and_bytes) dummy_counter;
-        table dummy {
-            key = {
-                hdr.data.key1 : exact; /* Do an exact match on the key */
-            }
-            actions = {
-                NoAction;
-            }
-            counters = dummy_counter;
-        }
-
-
     apply {
-        if (IS_I2E_CLONE(standard_metadata)) {
-            dummy.apply();
-            hdr.data.type_sync = WRITE_CLONE;
-            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
-            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
-            hdr.ethernet.dstAddr = sec_mac;
-            hdr.ipv4.dstAddr = sec_ipaddr;
-
-        }
-        else if (hdr.data.type_sync == READ_REPLY){
+        if (hdr.data.type_sync == GET_REPLY){
             macAddr_t tempMac;
             tempMac = hdr.ethernet.srcAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
