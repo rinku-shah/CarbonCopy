@@ -4,7 +4,8 @@ Can be changed by using a table.
 Or change it to a constant defined in a file.
 
 Assumption - Packets received from secondary are always to go to gateway. Needed for sync
-      // if(standard_metadata.ingress_port = 2){
-      //     egressSpec_t temp = 1;
-      //     standard_metadata.egress_spec = temp;
-      // }
+if(standard_metadata.ingress_port = 2){
+    egressSpec_t temp = 1;
+    standard_metadata.egress_spec = temp;
+    return;
+}

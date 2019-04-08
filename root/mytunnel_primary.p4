@@ -22,9 +22,6 @@ control c_ingress(inout headers hdr,
 
         }
 
-        action _drop() {
-            mark_to_drop();
-        }
 
         action send_to_cpu() {
             standard_metadata.egress_spec = CPU_PORT;
@@ -33,40 +30,60 @@ control c_ingress(inout headers hdr,
             hdr.packet_in.ingress_port = standard_metadata.ingress_port;
         }
 
-        action myforward(egressSpec_t port, bit<48> dst_mac) {
-          hdr.ethernet.dstAddr = dst_mac;
-          standard_metadata.egress_spec = port;
-
+        action _drop() {
+            mark_to_drop();
         }
 
-        table gateway_forward {
+        /* Take the value from the key value container pushed table */
+        action reply_to_read(bit<32> value) {
+            hdr.data.type_sync = READ_REPLY;
+            hdr.data.value = value;
+            standard_metadata.egress_spec = standard_metadata.ingress_port;
+        }
 
+        table kv_store {
             key = {
-                hdr.data.type_sync : exact; /* Do an exact match on the type */
+                hdr.data.key1 : exact; /* Do an exact match on the key */
             }
             actions = {
-                myforward;
+                reply_to_read;
                 _drop;
                 NoAction;
             }
-            size = 1024;
+            size = 8192;
             default_action = NoAction();
-            // counters = kv_store_counter;
         }
+
+
+
 
         apply {
-              gateway_forward.apply();
-              if (standard_metadata.egress_spec < MAX_PORTS) {
+            if (standard_metadata.ingress_port == CPU_PORT) {
+                standard_metadata.egress_spec = hdr.packet_out.egress_port;
+                hdr.packet_out.setInvalid();
+                return;
+            }
+            else if(hdr.data.type_sync==READ){
+                kv_store.apply();
+                return;
+            }
+            else if(hdr.data.type_sync==WRITE){
+                /* Send it to the local controller for rule insertion */
+                standard_metadata.egress_spec = CPU_PORT;
+                hdr.packet_in.setValid();
+                hdr.packet_in.ingress_port = standard_metadata.ingress_port;
+                return;
+            }
+
+             // Update port counters at index = ingress or egress port.
+             if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
-              }
-              if (standard_metadata.ingress_port < MAX_PORTS) {
+             }
+             if (standard_metadata.ingress_port < MAX_PORTS) {
                  rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
-              }
-              
+             }
+
         }
-
-
-
 }
 
 // ------------------------- EGRESS -----------------------------
@@ -77,7 +94,17 @@ control c_egress(inout headers hdr,
 
 
     apply {
+        if (hdr.data.type_sync == READ_REPLY){
+            macAddr_t tempMac;
+            tempMac = hdr.ethernet.srcAddr;
+            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+            hdr.ethernet.dstAddr = tempMac;
 
+            ip4Addr_t tempip4;
+            tempip4 = hdr.ipv4.srcAddr;
+            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+            hdr.ipv4.dstAddr = tempip4;
+        }
     }
 
 }

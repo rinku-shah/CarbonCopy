@@ -47,25 +47,25 @@ import org.onosproject.net.pi.runtime.PiActionParam;
 import org.slf4j.Logger;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class Rule_insertion{
+public class Rule_insertion2{
 	/* Ignoring logger service */
 
 	/* Declare the variables inside the pipeconf file */
 
-	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,String key, String value){
+	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,byte[] key_byte, byte [] value_byte){
 	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.kv_store");
     PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.key1");
 		// byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
     // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff,
     // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
-		byte[] key_byte = key.getBytes();
+		// byte[] key_byte = key.getBytes();
 
 		PiCriterion match = PiCriterion.builder()
             .matchExact(keyID, key_byte)
             .build();
 
     PiActionId ingressActionId = PiActionId.of("c_ingress.reply_to_read");
-		byte[] value_byte = value.getBytes();
+		// byte[] value_byte = value.getBytes();
     PiActionParam valueParam = new PiActionParam(PiActionParamId.of("value"), value_byte);
 
     PiAction action = PiAction.builder()
@@ -80,7 +80,8 @@ public class Rule_insertion{
 
     private void insertPiFlowRule(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId, PiTableId tableId,
                                   PiCriterion piCriterion, PiAction piAction) {
-        FlowRule rule = DefaultFlowRule.builder()
+// makeTemporary(int timeout)
+			  FlowRule rule = DefaultFlowRule.builder()
                 .forDevice(switchId)
                 .forTable(tableId)
                 .fromApp(appId)

@@ -9,12 +9,15 @@
 #include "UdpLayer.h"
 #include "PayloadLayer.h"
 #include "PcapLiveDeviceList.h"
+#include <in.h>
 #include <sstream>
 #include <iostream>
+#include <unistd.h>
+
 
 #define lg_mac "00:16:3e:f1:c8:77"
-#define primary_mac "00:16:3e:bc:c7:99"
-#define primary_ip "192.168.2.2"
+#define gateway_mac "00:16:3e:f5:9c:b0"
+#define gateway_ip "192.168.1.2"
 #define lg_ip "192.168.1.1"
 
 struct PacketStats
@@ -77,30 +80,42 @@ struct PacketStats
 };
 // We'l count only UDP Packets
 
-pcpp::Packet createPacket(uint64_t key, uint64_t val) {
-	pcpp::Packet newPacket(76);
+pcpp::Packet createPacket(uint32_t key, uint32_t val, uint8_t type_sync) {
+	pcpp::Packet newPacket(52);
 
 	// Eth Layer and ipv4 layers are tuned to primary
-	pcpp::EthLayer newEthernetLayer(pcpp::MacAddress(lg_mac), pcpp::MacAddress(primary_mac));
-	pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address(std::string(lg_ip)), pcpp::IPv4Address(std::string(primary_ip)));
-	pcpp::UdpLayer newUdpLayer(53, 53);
-	
-	uint8_t type_sync = 0x6;
+	pcpp::EthLayer newEthernetLayer(pcpp::MacAddress(lg_mac), pcpp::MacAddress(gateway_mac), PCPP_ETHERTYPE_IP);
+	pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address(std::string(lg_ip)), pcpp::IPv4Address(std::string(gateway_ip)));
+	newIPLayer.getIPv4Header()->protocol = pcpp::PACKETPP_IPPROTO_UDP;
+	newIPLayer.getIPv4Header()->ipVersion = 4;
+	newIPLayer.getIPv4Header()->timeToLive = 64;
+	newIPLayer.getIPv4Header()->totalLength = htons(38);
+	// fprintf(stderr, "%d\n", newIPLayer.getIPv4Header()->ipVersion);
+	pcpp::UdpLayer newUdpLayer(12345, 4000);
+	newUdpLayer.getUdpHeader()->length = htons(18);
+
 	// uint64_t key = 0x12;
+	// key = htons(key);
 	uint8_t *key1 = (uint8_t *)&key;
 	// uint64_t val = 0x94;
+	// val = htons(val);
 	uint8_t *val1 = (uint8_t *)&val;
 	uint8_t version = 0x1;
 
-	uint8_t result[18];
+	uint8_t result[10];
 	result[0] = type_sync;
-	for (int i= 0; i < 8; i ++)
+	for (int i= 3; i >= 0; i--)
 	{
+		printf("%d ", key1[i]);
 		result[i+1] = key1[i];
-		result[i+9] = val1[i];
+
+		printf("%d \n", val1[i]);
+		result[i+5] = val1[i];
 	}
-	result[17] = version;
+	result[9] = version;
 	uint8_t *payload = (uint8_t*)(&result);
+
+	fprintf(stderr, "Payload created\n");
 
 	// std::stringstream ss1;
 	// std::stringstream ss2;
@@ -119,31 +134,64 @@ pcpp::Packet createPacket(uint64_t key, uint64_t val) {
 	// strcat(str, s2.c_str());
 	// strcat(str, s3.c_str());
 	// strcat(str, s4.c_str());
-	
-	pcpp::PayloadLayer newPayload(payload, 34, 0);
-            
+
+	pcpp::PayloadLayer newPayload(payload, 10, 0);
+
 	newPacket.addLayer(&newEthernetLayer);
 	newPacket.addLayer(&newIPLayer);
 	newPacket.addLayer(&newUdpLayer);
 	newPacket.addLayer(&newPayload);
 
+	fprintf(stderr, "Packet created\n");
+
 	return newPacket;
 }
 
-int main(int argc, char* argv[]) {
-	
+static void onPacketArrives(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
+{
+	// extract the stats object form the cookie
+	PacketStats* stats = (PacketStats*)cookie;
 
-	pcpp::Packet pkt = createPacket(0x12, 0x94);
+	// parsed the raw packet
+	pcpp::Packet parsedPacket(packet);
+
+	// collect stats from packet
+	stats->consumePacket(parsedPacket);
+}
+
+
+/**
+ * a callback function for the blocking mode capture which is called each time a packet is captured
+ */
+static bool onPacketArrivesBlockingMode(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
+{
+	// extract the stats object form the cookie
+	PacketStats* stats = (PacketStats*)cookie;
+
+	// parsed the raw packet
+	pcpp::Packet parsedPacket(packet);
+
+	// collect stats from packet
+	stats->consumePacket(parsedPacket);
+
+	// return false means we don't want to stop capturing after this callback
+	return false;
+}
+
+int main(int argc, char* argv[]) {
+
 
 	// IPv4 address of the interface we want to sniff
 	std::string interfaceIPAddr = "192.168.1.1";
+
+	// int interval = 2;
 
 	// find the interface by IP address
 	pcpp::PcapLiveDevice* dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIPAddr.c_str());
 
 	if (dev == NULL)
 	{
-		printf("Cannot find interface with IPv4 address of '%s'\n", interfaceIPAddr.c_str());
+		fprintf(stderr, "Cannot find interface with IPv4 address of '%s'\n", interfaceIPAddr.c_str());
 		exit(1);
 	}
 	// get interface MAC address
@@ -152,12 +200,77 @@ int main(int argc, char* argv[]) {
 	// open the device before start capturing/sending packets
 	if (!dev->open())
 	{
-		printf("Cannot open device\n");
+		fprintf(stderr, "Cannot open device\n");
 		exit(1);
 	}
 
 	// create the stats object
 	PacketStats stats;
+
+	// Async packet capture with a callback function (Non-blocking)
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+	// printf("\nStarting async capture...\n");
+
+	// start capture in async mode. Give a callback function to call to whenever a packet is captured and the stats object as the cookie
+	// dev->startCapture(onPacketArrives, &stats);
+
+	// sleep for 10 seconds in main thread, in the meantime packets are captured in the async thread
+	// PCAP_SLEEP(interval);
+
+	// Sending single packets
+	// ~~~~~~~~~~~~~~~~~~~~~~
+	int base = 100;
+	int i=1,j=1;
+	while(true){
+
+			int count = 10;
+			while(count--){
+				pcpp::Packet pktw = createPacket(i, count + 10, 0x2);
+				if (!dev->sendPacket(&pktw))
+				{
+					fprintf(stderr, "Couldn't send packet\n");
+					exit(1);
+				}
+				fprintf(stderr, "write count = %d\n",i);
+				i++;
+
+				usleep(10000);
+
+				fprintf(stderr, "Packet sent!\n");
+			}
+
+			count = 10;
+			while(count--){
+				pcpp::Packet pktr = createPacket(j, 100, 0x6);
+
+				if (!dev->sendPacket(&pktr))
+				{
+					printf("Couldn't send packet\n");
+					exit(1);
+				}
+				usleep(10000);
+				fprintf(stderr, "read count = %d\n",j);
+				j++;
+
+			}
+			// if(i==100){
+			// 	fprintf(stderr, "**Band ho gaya*******************************\n");
+			// 	usleep(20000000);
+			// }
+			base += 100;
+	}
+
+	// stop capturing packets
+	// dev->stopCapture();
+
+	// print results
+	 printf("Results:\n");
+	 stats.printToConsole();
+
+	// clear stats
+	 stats.clear();
+
 
 	return 0;
 }

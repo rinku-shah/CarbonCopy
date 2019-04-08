@@ -50,6 +50,7 @@ control c_ingress(inout headers hdr,
                 _drop;
                 NoAction;
             }
+            size = 8192;
             default_action = NoAction();
         }
 
@@ -60,7 +61,6 @@ control c_ingress(inout headers hdr,
             if (standard_metadata.ingress_port == CPU_PORT) {
             // Packet received from CPU_PORT, this is a packet-out sent by the controller. Set the egress port as requested by the controller (packet_out header) and remove the packet_out header.
             standard_metadata.egress_spec = hdr.packet_out.egress_port;
-            // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
             hdr.packet_out.setInvalid();
             return;
 
@@ -69,10 +69,7 @@ control c_ingress(inout headers hdr,
                 kv_store.apply();
                 return;
             }
-            else if(hdr.data.type_sync==WRITE_CLONE){
-                /* If this is primary switch, then packet has to be cloned */
-
-
+            else if(hdr.data.type_sync==WRITE){
                 /* Send it to the local controller for rule insertion */
                 standard_metadata.egress_spec = CPU_PORT;
                 hdr.packet_in.setValid();
@@ -100,7 +97,17 @@ control c_egress(inout headers hdr,
 
 
     apply {
+        if (hdr.data.type_sync == READ_REPLY){
+            macAddr_t tempMac;
+            tempMac = hdr.ethernet.srcAddr;
+            hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+            hdr.ethernet.dstAddr = tempMac;
 
+            ip4Addr_t tempip4;
+            tempip4 = hdr.ipv4.srcAddr;
+            hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
+            hdr.ipv4.dstAddr = tempip4;
+        }
     }
 
 }
