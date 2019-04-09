@@ -20,6 +20,7 @@ const message_type_t SWO = 7;
 
 // MAC Address of secondary
 const bit<48> sec_mac = 0x00163e0c3711;
+const bit<48> gateway_mac = 0x00163ef59cb1;
 const bit<32> sec_ipaddr = 0xc0a80402;
 
 const bit<8> DEFAULT_IPV4_TTL = 64;

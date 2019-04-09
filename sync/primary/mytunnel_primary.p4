@@ -100,6 +100,9 @@ control c_ingress(inout headers hdr,
                 // when more WRITE packets of same key come on short time.
                 egressSpec_t temp = 1;
                 standard_metadata.egress_spec = temp;
+                // hdr.ipv4.dstAddr = gateway_ipaddr;
+                hdr.ethernet.dstAddr = gateway_mac;
+
             }
 
 
