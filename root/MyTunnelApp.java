@@ -206,6 +206,8 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
         // packetService.addProcessor(processor, PacketProcessor.director(2));
         deviceService.addListener(deviceListener);
 		linkService.addListener(linkListener);
+    packetService.addProcessor(processor, PacketProcessor.director(2));
+    
 		providerService = registry.register(this);
         for (int i=1; i <=3; i++)
         {
@@ -235,7 +237,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
     }
 
     Rule_insertion RI = new Rule_insertion();
-    Rule_insertion RI2 = new Rule_insertion2();
+    Rule_insertion2 RI2 = new Rule_insertion2();
 
 
     private void requestIntercepts() {
@@ -576,13 +578,13 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
       int fromByteArray(byte[] bytes) {
            return ByteBuffer.wrap(bytes).getInt();
       }
+  }
 
-      byte[] toByteArray(int value) {
-          return new byte[] {
-              (byte)(value >> 24),
-              (byte)(value >> 16),
-              (byte)(value >> 8),
-              (byte)value };
-      }
+  byte[] toByteArray(int value) {
+      return new byte[] {
+          (byte)(value >> 24),
+          (byte)(value >> 16),
+          (byte)(value >> 8),
+          (byte)value };
   }
 }
