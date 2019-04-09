@@ -57,6 +57,7 @@ control c_ingress(inout headers hdr,
                 _drop;
                 NoAction;
             }
+            size = 8192;
             default_action = NoAction();
             // counters = kv_store_counter;
         }
@@ -94,8 +95,7 @@ control c_ingress(inout headers hdr,
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
             }
-            if(hdr.data.type_sync==WRITE_CLONE_REPLY){
-                hdr.data.type_sync = WRITE_REPLY;
+            if(hdr.data.type_sync==WRITE_REPLY){
                 // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
                 // when more WRITE packets of same key come on short time.
                 egressSpec_t temp = 1;
@@ -121,22 +121,9 @@ control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
-        direct_counter(CounterType.packets_and_bytes) dummy_counter;
-        table dummy {
-            key = {
-                hdr.data.key1 : exact; /* Do an exact match on the key */
-            }
-            actions = {
-                NoAction;
-            }
-            counters = dummy_counter;
-        }
-
 
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
-            dummy.apply();
-            hdr.data.type_sync = WRITE_CLONE;
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
             hdr.ethernet.dstAddr = sec_mac;

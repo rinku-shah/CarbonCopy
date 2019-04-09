@@ -47,7 +47,7 @@ import org.onosproject.net.pi.runtime.PiActionParam;
 import org.slf4j.Logger;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class Rule_insertion{
+public class Rule_insertion2{
 	/* Ignoring logger service */
 
 	/* Declare the variables inside the pipeconf file */

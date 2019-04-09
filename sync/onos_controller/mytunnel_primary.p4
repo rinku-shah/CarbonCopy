@@ -6,7 +6,6 @@
 #include "include/definitions.p4"
 #define MAX_PORTS 255
 
-
 #define IS_I2E_CLONE(std_meta) (std_meta.instance_type == BMV2_V1MODEL_INSTANCE_TYPE_INGRESS_CLONE)
 
 
@@ -40,7 +39,7 @@ control c_ingress(inout headers hdr,
 
 
         /* Take the value from the key value container pushed table */
-        action reply_to_read(bit<128> value) {
+        action reply_to_read(bit<32> value) {
             hdr.data.type_sync = READ_REPLY;
             hdr.data.value = value;
             standard_metadata.egress_spec = standard_metadata.ingress_port;
@@ -58,6 +57,7 @@ control c_ingress(inout headers hdr,
                 _drop;
                 NoAction;
             }
+            size = 8192;
             default_action = NoAction();
             // counters = kv_store_counter;
         }
@@ -95,7 +95,15 @@ control c_ingress(inout headers hdr,
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
             }
-                         // Update port counters at index = ingress or egress port.
+            if(hdr.data.type_sync==WRITE_REPLY){
+                // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
+                // when more WRITE packets of same key come on short time.
+                egressSpec_t temp = 1;
+                standard_metadata.egress_spec = temp;
+            }
+
+
+                            // Update port counters at index = ingress or egress port.
              if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
              }
@@ -113,27 +121,14 @@ control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
 
-        direct_counter(CounterType.packets_and_bytes) dummy_counter;
-        table dummy {
-            key = {
-                hdr.data.key1 : exact; /* Do an exact match on the key */
-            }
-            actions = {
-                NoAction;
-            }
-            counters = dummy_counter;
-        }
-
 
     apply {
         if (IS_I2E_CLONE(standard_metadata)) {
-            dummy.apply();
-            hdr.data.type_sync = WRITE_CLONE;
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
             hdr.ethernet.dstAddr = sec_mac;
             hdr.ipv4.dstAddr = sec_ipaddr;
-            
+
         }
         else if (hdr.data.type_sync == READ_REPLY){
             macAddr_t tempMac;

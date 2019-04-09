@@ -59,11 +59,9 @@ control c_ingress(inout headers hdr,
 
         apply {
             if (standard_metadata.ingress_port == CPU_PORT) {
-            // Packet received from CPU_PORT, this is a packet-out sent by the controller. Set the egress port as requested by the controller (packet_out header) and remove the packet_out header.
-            standard_metadata.egress_spec = hdr.packet_out.egress_port;
-            hdr.packet_out.setInvalid();
-            return;
-
+                standard_metadata.egress_spec = hdr.packet_out.egress_port;
+                hdr.packet_out.setInvalid();
+                return;
             }
             else if(hdr.data.type_sync==READ){
                 kv_store.apply();
@@ -75,7 +73,6 @@ control c_ingress(inout headers hdr,
                 hdr.packet_in.setValid();
                 hdr.packet_in.ingress_port = standard_metadata.ingress_port;
                 return;
-
             }
 
              // Update port counters at index = ingress or egress port.

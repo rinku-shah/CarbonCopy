@@ -17,9 +17,7 @@ control c_ingress(inout headers hdr,
         counter(MAX_PORTS, CounterType.packets_and_bytes) rx_port_counter;
 
         action ipv4_forward(egressSpec_t port) {
-
             standard_metadata.egress_spec = port;
-            
         }
 
         action _drop() {
@@ -40,7 +38,6 @@ control c_ingress(inout headers hdr,
         }
 
         table gateway_forward {
-
             key = {
                 hdr.data.type_sync : exact; /* Do an exact match on the type */
             }
@@ -51,16 +48,9 @@ control c_ingress(inout headers hdr,
             }
             size = 1024;
             default_action = NoAction();
-            // counters = kv_store_counter;
         }
 
         apply {
-
-              if (hdr.data.type_sync == SWO) {
-                send_to_cpu();
-                return;
-              }
-              
               gateway_forward.apply();
               if (standard_metadata.egress_spec < MAX_PORTS) {
                  tx_port_counter.count((bit<32>) standard_metadata.egress_spec);
@@ -68,11 +58,7 @@ control c_ingress(inout headers hdr,
               if (standard_metadata.ingress_port < MAX_PORTS) {
                  rx_port_counter.count((bit<32>) standard_metadata.ingress_port);
               }
-
-            }
-            
-            
-        
+        }
 }
 
 // ------------------------- EGRESS -----------------------------
@@ -80,10 +66,8 @@ control c_ingress(inout headers hdr,
 control c_egress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
-
-
     apply {
-       
+
     }
 
 }

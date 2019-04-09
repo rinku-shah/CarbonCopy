@@ -13,7 +13,6 @@
 #include <sys/time.h> 
 #include <sstream>
 #include <iostream>
-#include <stdio.h>
 
 #define lg_mac "00:16:3e:f1:c8:77"
 #define gateway_mac "00:16:3e:f5:9c:b0"
@@ -30,36 +29,17 @@ struct PacketStats
 	int dnsPacketCount;
 	int httpPacketCount;
 	int sslPacketCount;
-	int keys[200];
-	int vals[200];
-	int offset;
-	int writep;
-	int wr_cnt;
-	int read_cnt;
 
 
 	/**
 	 * Clear all stats
 	 */
-	void clear() { wr_cnt = 0; read_cnt = 0; writep = 2*3; offset = 1; ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
+	void clear() { ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
 
 	/**
 	 * C'tor
 	*/
-	PacketStats() { clear(); 
-		for (int i=0; i < writep; i++) {
-			keys[i] = i + offset;
-			vals[i] = i + offset;
-		}
-
-	}
-
-	void reinit() {
-		for (int i=0; i < writep; i++) {
-			
-			vals[i] = i + offset;
-		}		
-	}
+	PacketStats() { clear(); }
 
 	/**
 	 * Collect stats from a packet
@@ -96,12 +76,6 @@ struct PacketStats
 		// printf("HTTP packet count:     %d\n", httpPacketCount);
 		// printf("SSL packet count:      %d\n", sslPacketCount);
 	}
-
-	void incr_offset(int off) {
-		offset += off;
-	}
-
-
 };
 // We'l count only UDP Packets
 
@@ -110,7 +84,6 @@ void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sy
 	// Eth Layer and ipv4 layers are tuned to primary
 	
 	// uint64_t key = 0x12;
-	// printf("type : %d \n", type_sync);
 	key = htonl(key);
 	uint8_t *key1 = (uint8_t *)&key;
 	// uint64_t val = 0x94;
@@ -122,16 +95,16 @@ void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sy
 	result[0] = type_sync;
 	for (int i= 3; i >= 0; i--)
 	{
-		// printf("%d ", key1[i]);
+		printf("%d ", key1[i]);
 		result[i+1] = key1[i];
 
-		// printf("%d \n", val1[i]);
+		printf("%d \n", val1[i]);
 		result[i+5] = val1[i];
 	}
 	result[9] = version;
 	memcpy(payload, &result, sizeof(result));	 
 	
-	// fprintf(stderr, "Payload created\n");
+	fprintf(stderr, "Payload created\n");
 
 }
 
@@ -176,35 +149,16 @@ static bool onPacketArrivesBlockingMode(pcpp::RawPacket* packet, pcpp::PcapLiveD
 	
 	uint8_t* payload_data = payload->getPayload();
 	uint16_t srcPort = ntohs((udp->getUdpHeader())->portSrc);
-	//fprintf(stderr, "srcPort : %d\n", srcPort);
-	//fprintf(stderr, "%d\n", sizeof(payload->getPayload()));
-	// fprintf(stderr, "Payload : %d\n", (int)*payload_data);
+	fprintf(stderr, "srcPort : %d\n", srcPort);
+	fprintf(stderr, "%d\n", sizeof(payload->getPayload()));
+	fprintf(stderr, "Payload : %d\n", (int)*payload_data);
 	int type_sync = (int)*payload_data;
-	// for (int j = 0; j < 4;j ++)
-	// {
-	// 	fprintf(stderr, "Payload key : %d\n", payload_data[j+1]);
-	// 	fprintf(stderr, "Payload val : %d\n", payload_data[j+5]);	
-	// }
-	int key = (payload_data[4] | (payload_data[3] << 8) | (payload_data[2] << 16) | (payload_data[1] << 24));
-	// fprintf(stderr, "Payload key : %d\n", key);
-	
-	int val = (int)(payload_data[8] | (payload_data[7] << 8) | (payload_data[6] << 16) | (payload_data[5] << 24));
-	// fprintf(stderr, "Payload val : %d\n", val);
-	
+
 	// return false means we don't want to stop capturing after this 
-	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
-		stats->wr_cnt += 1;
-		// fprintf(stderr, "Write Packet rcvd\n");
+	if ((type_sync == 3 || type_sync == 1) && (srcPort == 12345 || srcPort ==12346))
 		return true;
-	}
-	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
-		stats->read_cnt += 1;
-		// fprintf(stderr, "Read Packet rcvd\n");
-		return true;
-	}
-	else {
+	else
 		return false;
-	}
 }
 
 int main(int argc, char* argv[]) {
@@ -253,10 +207,10 @@ int main(int argc, char* argv[]) {
 	// ~~~~~~~~~~~~~~~~~~~~~~
 
 	
-	int num_packets = 10, writep = 2, num_batches = 3;
+	int num_packets = 8, num = 0;
 	int captured;
 	int timeout = 2;
-	// int rw_seq[] = {0x2, 0x6, 0x2, 0x6, 0x2, 0x6, 0x2, 0x6};
+	int rw_seq[] = {0x2, 0x6, 0x2, 0x6, 0x2, 0x6, 0x2, 0x6};
 	// int key_seq[] = {12, 12, 14, 14, 16, 16, 18, 18};
 	// int val_seq[] = {94, 95, 96, 97, 98, 99, 100, 101};
 
@@ -284,58 +238,44 @@ int main(int argc, char* argv[]) {
 
 
 	struct timeval stop, start;
-	// int key = 0x0,value = 0x0;
-	for (int biter = 1; biter <= num_batches; biter++) {
-		int num = 0;
-		while (num < num_packets) {
+	int key = 0x1,value = 0x1;	
+	while (num < num_packets) {
 
-			captured = 0;
+		captured = 0;
 
-			uint8_t* payload_new = newPayload.getPayload();
-			if(num < writep){	
-				createPayload(payload_new, stats.keys[num], stats.vals[num], 0x2);
-			}
-			else {
-				int somenum = (rand() % (writep)) + 1; 
-				// fprintf(stderr, "somenum : %d\n", somenum);
-				createPayload(payload_new, stats.keys[somenum], 129, 0x6);	
-			}
-			
-			gettimeofday(&start, NULL);
-			if (!dev->sendPacket(&pkt))
-			{
-				fprintf(stderr, "Couldn't send packet\n");
-				exit(1);
-			}
-
-			//fprintf(stderr, "Packet sent!\n");
-			//printf("\nStarting capture in blocking mode...\n");
-	
-			captured = dev->startCaptureBlockingMode(onPacketArrivesBlockingMode, &stats, timeout);
-
-			if (captured == 1) {
-				gettimeofday(&stop, NULL);
-				if (num < writep) {
-					fprintf(stderr, "Write Packet rcvd\n");
-				}
-				else {
-					fprintf(stderr, "Read Packet rcvd\n");
-				}
-				// diff_t = difftime(end_t, start_t);
-				//stats.printToConsole();
-				fprintf(stderr, "RTT time : %lu\n", stop.tv_usec - start.tv_usec);
-
-			}
-
-			num += 1;
-			// stats.clear();
-		
+		uint8_t* payload_new = newPayload.getPayload();
+		createPayload(payload_new, key, value, rw_seq[num%2]);
+		if(num%2 == 1){
+			key++;
+			value++;			
+		}
+		gettimeofday(&start, NULL);
+		if (!dev->sendPacket(&pkt))
+		{
+			fprintf(stderr, "Couldn't send packet\n");
+			exit(1);
 		}
 
-		stats.incr_offset(20);
-		stats.reinit();
+		fprintf(stderr, "Packet sent!\n");
+		printf("\nStarting capture in blocking mode...\n");
 	
+		captured = dev->startCaptureBlockingMode(onPacketArrivesBlockingMode, &stats, timeout);
+
+		if (captured == 1) {
+			gettimeofday(&stop, NULL);
+			fprintf(stderr, "Packet rcvd\n");
+			// diff_t = difftime(end_t, start_t);
+			//stats.printToConsole();
+			fprintf(stderr, "RTT time : %f\n", stop.tv_usec - start.tv_usec);
+
+		}
+
+		num += 1;
+		// stats.clear();
+		
 	}
+	
+	
 
 
 	// pcpp::Packet pktr = createPacket(12, 9, 0x6);

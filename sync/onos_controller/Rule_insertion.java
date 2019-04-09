@@ -46,31 +46,44 @@ import org.onosproject.net.pi.runtime.PiActionParam;
 
 import org.slf4j.Logger;
 import static org.slf4j.LoggerFactory.getLogger;
+import java.util.List;
+import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 public class Rule_insertion{
 	/* Ignoring logger service */
 
 	/* Declare the variables inside the pipeconf file */
 
-	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,String key, String value){
-	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.kv_store");
-    PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.key1");
+	public void populate_gf(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,String key, String value1, byte[] value2){
+	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.gateway_forward");
+    PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.type_sync");
 		// byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
     // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff,
-    // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff };
-		byte[] key_byte = key.getBytes();
+    // (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff }
+        ByteBuffer b1 = ByteBuffer.allocate(4);
+        ByteBuffer b2 = ByteBuffer.allocate(4);
+        
+        int key_int = Integer.parseInt(key);
+        b1.putInt(key_int);
+        byte[] key_byte = b1.array();
 
 		PiCriterion match = PiCriterion.builder()
             .matchExact(keyID, key_byte)
             .build();
 
-    PiActionId ingressActionId = PiActionId.of("c_ingress.reply_to_read");
-		byte[] value_byte = value.getBytes();
-    PiActionParam valueParam = new PiActionParam(PiActionParamId.of("value"), value_byte);
+    PiActionId ingressActionId = PiActionId.of("c_ingress.myforward");
+    int val_int = Integer.parseInt(value1);
+    b2.putInt(val_int);
+	byte[] value1_byte = b2.array();
+    PiActionParam valueParam1 = new PiActionParam(PiActionParamId.of("port"), value1_byte);
+    byte[] value2_byte = value2;
+    PiActionParam valueParam2 = new PiActionParam(PiActionParamId.of("dst_mac"), value2_byte);
+    List<PiActionParam> list = Arrays.asList(valueParam1, valueParam2);
 
     PiAction action = PiAction.builder()
             .withId(ingressActionId)
-            .withParameter(valueParam)
+            .withParameters(list)
             .build();
 
     insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
