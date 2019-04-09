@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <stdio.h>
+#include <limits.h>
 
 #define lg_mac "00:16:3e:f1:c8:77"
 #define gateway_mac "00:16:3e:f5:9c:b0"
@@ -30,18 +31,21 @@ struct PacketStats
 	int dnsPacketCount;
 	int httpPacketCount;
 	int sslPacketCount;
-	int keys[200];
-	int vals[200];
+	int keys[100000];
+	int vals[100000];
 	int offset;
 	int writep;
 	int wr_cnt;
 	int read_cnt;
+	double rl;
+	double wl;
+	double exp_interval;
 
 
 	/**
 	 * Clear all stats
 	 */
-	void clear() { wr_cnt = 0; read_cnt = 0; writep = 2*3; offset = 1; ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
+	void clear() { rl = 0; wl = 0; wr_cnt = 0; read_cnt = 0; offset = 1; ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
 
 	/**
 	 * C'tor
@@ -56,7 +60,7 @@ struct PacketStats
 
 	void reinit() {
 		for (int i=0; i < writep; i++) {
-			
+			keys[i] = i + offset;
 			vals[i] = i + offset;
 		}		
 	}
@@ -91,10 +95,15 @@ struct PacketStats
 		// printf("IPv4 packet count:     %d\n", ipv4PacketCount);
 		// printf("IPv6 packet count:     %d\n", ipv6PacketCount);
 		// printf("TCP packet count:      %d\n", tcpPacketCount);
-		printf("UDP packet count:      %d\n", udpPacketCount);
+		// printf("UDP packet count:      %d\n", udpPacketCount);
 		// printf("DNS packet count:      %d\n", dnsPacketCount);
 		// printf("HTTP packet count:     %d\n", httpPacketCount);
 		// printf("SSL packet count:      %d\n", sslPacketCount);
+		printf("No. of reads : %d\n", read_cnt);
+		printf("No. of writes : %d\n", wr_cnt);
+		printf("Avg throughput %f\n", (read_cnt + wr_cnt)/exp_interval);
+		printf("Avg read latency %f\n", rl/read_cnt);
+		printf("Avg write latency %f\n", wl/wr_cnt);
 	}
 
 	void incr_offset(int off) {
@@ -192,12 +201,12 @@ static bool onPacketArrivesBlockingMode(pcpp::RawPacket* packet, pcpp::PcapLiveD
 	// fprintf(stderr, "Payload val : %d\n", val);
 	
 	// return false means we don't want to stop capturing after this 
-	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
+	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346)) {
 		stats->wr_cnt += 1;
 		// fprintf(stderr, "Write Packet rcvd\n");
 		return true;
 	}
-	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
+	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346)) {
 		stats->read_cnt += 1;
 		// fprintf(stderr, "Read Packet rcvd\n");
 		return true;
@@ -212,8 +221,6 @@ int main(int argc, char* argv[]) {
 
 	// IPv4 address of the interface we want to sniff
 	std::string interfaceIPAddr = "192.168.1.1";
-	time_t start_t, end_t;
-	double diff_t;
 	// int interval = 2;
 
 	// find the interface by IP address
@@ -253,9 +260,11 @@ int main(int argc, char* argv[]) {
 	// ~~~~~~~~~~~~~~~~~~~~~~
 
 	
-	int num_packets = 10, writep = 2, num_batches = 3;
+	int num_packets = 100, writep = 90, num_batches = 1, wr_threshold = 10000;
 	int captured;
+	stats.writep = writep * num_batches;
 	int timeout = 2;
+	stats.exp_interval = 5.0*6.0f;
 	// int rw_seq[] = {0x2, 0x6, 0x2, 0x6, 0x2, 0x6, 0x2, 0x6};
 	// int key_seq[] = {12, 12, 14, 14, 16, 16, 18, 18};
 	// int val_seq[] = {94, 95, 96, 97, 98, 99, 100, 101};
@@ -284,7 +293,10 @@ int main(int argc, char* argv[]) {
 
 
 	struct timeval stop, start;
+	struct timeval exp_start, exp_end;
+	int flag = 0;
 	// int key = 0x0,value = 0x0;
+	gettimeofday(&exp_start, NULL);
 	for (int biter = 1; biter <= num_batches; biter++) {
 		int num = 0;
 		while (num < num_packets) {
@@ -317,23 +329,38 @@ int main(int argc, char* argv[]) {
 				gettimeofday(&stop, NULL);
 				if (num < writep) {
 					fprintf(stderr, "Write Packet rcvd\n");
+					stats.wl += (double)((long)stop.tv_usec - (long)start.tv_usec)/(double)1000;
 				}
 				else {
 					fprintf(stderr, "Read Packet rcvd\n");
+					stats.rl += (double)((long)stop.tv_usec - (long)start.tv_usec)/(double)1000;
 				}
 				// diff_t = difftime(end_t, start_t);
 				//stats.printToConsole();
-				fprintf(stderr, "RTT time : %lu\n", stop.tv_usec - start.tv_usec);
+				fprintf(stderr, "RTT time : %llu\n", (long long int)stop.tv_usec - (long long int)start.tv_usec);
 
 			}
 
 			num += 1;
 			// stats.clear();
+			gettimeofday(&exp_end, NULL);
+			if ((exp_end.tv_sec - exp_start.tv_sec) > stats.exp_interval) {
+				flag = 1;
+				break;
+			}
 		
 		}
 
-		stats.incr_offset(20);
+		if (flag == 1)
+			break;
+		if (stats.offset > wr_threshold) {
+			stats.offset = 1;
+		}
+		else {
+			stats.incr_offset(writep);
+		}
 		stats.reinit();
+
 	
 	}
 
@@ -351,7 +378,7 @@ int main(int argc, char* argv[]) {
 
 	// print results
 	// printf("Results:\n");
-	// stats.printToConsole();
+	stats.printToConsole();
 
 	// clear stats
 	// stats.clear();
