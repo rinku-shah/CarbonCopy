@@ -10,10 +10,10 @@
 #include "PayloadLayer.h"
 #include "PcapLiveDeviceList.h"
 #include <in.h>
+#include <sys/time.h> 
 #include <sstream>
 #include <iostream>
-#include <unistd.h>
-
+#include <stdio.h>
 
 #define lg_mac "00:16:3e:f1:c8:77"
 #define gateway_mac "00:16:3e:f5:9c:b0"
@@ -30,17 +30,36 @@ struct PacketStats
 	int dnsPacketCount;
 	int httpPacketCount;
 	int sslPacketCount;
+	int keys[200];
+	int vals[200];
+	int offset;
+	int writep;
+	int wr_cnt;
+	int read_cnt;
 
 
 	/**
 	 * Clear all stats
 	 */
-	void clear() { ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
+	void clear() { wr_cnt = 0; read_cnt = 0; writep = 2*3; offset = 1; ethPacketCount = 0; ipv4PacketCount = 0; ipv6PacketCount = 0; tcpPacketCount = 0; udpPacketCount = 0; tcpPacketCount = 0; dnsPacketCount = 0; httpPacketCount = 0; sslPacketCount = 0; }
 
 	/**
 	 * C'tor
-	 */
-	PacketStats() { clear(); }
+	*/
+	PacketStats() { clear(); 
+		for (int i=0; i < writep; i++) {
+			keys[i] = i + offset;
+			vals[i] = i + offset;
+		}
+
+	}
+
+	void reinit() {
+		for (int i=0; i < writep; i++) {
+			
+			vals[i] = i + offset;
+		}		
+	}
 
 	/**
 	 * Collect stats from a packet
@@ -68,37 +87,34 @@ struct PacketStats
 	 */
 	void printToConsole()
 	{
-		printf("Ethernet packet count: %d\n", ethPacketCount);
-		printf("IPv4 packet count:     %d\n", ipv4PacketCount);
-		printf("IPv6 packet count:     %d\n", ipv6PacketCount);
-		printf("TCP packet count:      %d\n", tcpPacketCount);
+		// printf("Ethernet packet count: %d\n", ethPacketCount);
+		// printf("IPv4 packet count:     %d\n", ipv4PacketCount);
+		// printf("IPv6 packet count:     %d\n", ipv6PacketCount);
+		// printf("TCP packet count:      %d\n", tcpPacketCount);
 		printf("UDP packet count:      %d\n", udpPacketCount);
-		printf("DNS packet count:      %d\n", dnsPacketCount);
-		printf("HTTP packet count:     %d\n", httpPacketCount);
-		printf("SSL packet count:      %d\n", sslPacketCount);
+		// printf("DNS packet count:      %d\n", dnsPacketCount);
+		// printf("HTTP packet count:     %d\n", httpPacketCount);
+		// printf("SSL packet count:      %d\n", sslPacketCount);
 	}
+
+	void incr_offset(int off) {
+		offset += off;
+	}
+
+
 };
 // We'l count only UDP Packets
 
-pcpp::Packet createPacket(uint32_t key, uint32_t val, uint8_t type_sync) {
-	pcpp::Packet newPacket(52);
-
+void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sync) {
+	
 	// Eth Layer and ipv4 layers are tuned to primary
-	pcpp::EthLayer newEthernetLayer(pcpp::MacAddress(lg_mac), pcpp::MacAddress(gateway_mac), PCPP_ETHERTYPE_IP);
-	pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address(std::string(lg_ip)), pcpp::IPv4Address(std::string(gateway_ip)));
-	newIPLayer.getIPv4Header()->protocol = pcpp::PACKETPP_IPPROTO_UDP;
-	newIPLayer.getIPv4Header()->ipVersion = 4;
-	newIPLayer.getIPv4Header()->timeToLive = 64;
-	newIPLayer.getIPv4Header()->totalLength = htons(38);
-	// fprintf(stderr, "%d\n", newIPLayer.getIPv4Header()->ipVersion);
-	pcpp::UdpLayer newUdpLayer(12345, 4000);
-	newUdpLayer.getUdpHeader()->length = htons(18);
-
+	
 	// uint64_t key = 0x12;
-	// key = htons(key);
+	// printf("type : %d \n", type_sync);
+	key = htonl(key);
 	uint8_t *key1 = (uint8_t *)&key;
 	// uint64_t val = 0x94;
-	// val = htons(val);
+	val = htonl(val);
 	uint8_t *val1 = (uint8_t *)&val;
 	uint8_t version = 0x1;
 
@@ -106,45 +122,17 @@ pcpp::Packet createPacket(uint32_t key, uint32_t val, uint8_t type_sync) {
 	result[0] = type_sync;
 	for (int i= 3; i >= 0; i--)
 	{
-		printf("%d ", key1[i]);
+		// printf("%d ", key1[i]);
 		result[i+1] = key1[i];
 
-		printf("%d \n", val1[i]);
+		// printf("%d \n", val1[i]);
 		result[i+5] = val1[i];
 	}
 	result[9] = version;
-	uint8_t *payload = (uint8_t*)(&result);
+	memcpy(payload, &result, sizeof(result));	 
+	
+	// fprintf(stderr, "Payload created\n");
 
-	fprintf(stderr, "Payload created\n");
-
-	// std::stringstream ss1;
-	// std::stringstream ss2;
-	// std::stringstream ss3;
-	// std::stringstream ss4;
-	// ss1 << "0x" << std::hex << type_sync;
-	// ss2 << "0x" << std::hex << key;
-	// ss3 << "0x" << std::hex << val;
-	// ss4 << "0x" << std::hex << version;
-	// char *str;
-	// std::string s1 = ss1.str();
-	// std::string s2 = ss2.str();
-	// std::string s3 = ss3.str();
-	// std::string s4 = ss4.str();
-	// strcat(str, s1.c_str());
-	// strcat(str, s2.c_str());
-	// strcat(str, s3.c_str());
-	// strcat(str, s4.c_str());
-
-	pcpp::PayloadLayer newPayload(payload, 10, 0);
-
-	newPacket.addLayer(&newEthernetLayer);
-	newPacket.addLayer(&newIPLayer);
-	newPacket.addLayer(&newUdpLayer);
-	newPacket.addLayer(&newPayload);
-
-	fprintf(stderr, "Packet created\n");
-
-	return newPacket;
 }
 
 static void onPacketArrives(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
@@ -173,21 +161,64 @@ static bool onPacketArrivesBlockingMode(pcpp::RawPacket* packet, pcpp::PcapLiveD
 
 	// collect stats from packet
 	stats->consumePacket(parsedPacket);
+	pcpp::PayloadLayer* payload = parsedPacket.getLayerOfType<pcpp::PayloadLayer>();
+	if (payload == NULL) {
+		fprintf(stderr, "No Payload Layer\n");
+		return false;
+	}
 
-	// return false means we don't want to stop capturing after this callback
-	return false;
+	pcpp::UdpLayer* udp = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+	if (payload == NULL) {
+		fprintf(stderr, "No UDP Layer\n");
+		return false;
+	}
+
+	
+	uint8_t* payload_data = payload->getPayload();
+	uint16_t srcPort = ntohs((udp->getUdpHeader())->portSrc);
+	//fprintf(stderr, "srcPort : %d\n", srcPort);
+	//fprintf(stderr, "%d\n", sizeof(payload->getPayload()));
+	// fprintf(stderr, "Payload : %d\n", (int)*payload_data);
+	int type_sync = (int)*payload_data;
+	// for (int j = 0; j < 4;j ++)
+	// {
+	// 	fprintf(stderr, "Payload key : %d\n", payload_data[j+1]);
+	// 	fprintf(stderr, "Payload val : %d\n", payload_data[j+5]);	
+	// }
+	int key = (payload_data[4] | (payload_data[3] << 8) | (payload_data[2] << 16) | (payload_data[1] << 24));
+	// fprintf(stderr, "Payload key : %d\n", key);
+	
+	int val = (int)(payload_data[8] | (payload_data[7] << 8) | (payload_data[6] << 16) | (payload_data[5] << 24));
+	// fprintf(stderr, "Payload val : %d\n", val);
+	
+	// return false means we don't want to stop capturing after this 
+	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
+		stats->wr_cnt += 1;
+		// fprintf(stderr, "Write Packet rcvd\n");
+		return true;
+	}
+	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346) && val==stats->vals[key-1]) {
+		stats->read_cnt += 1;
+		// fprintf(stderr, "Read Packet rcvd\n");
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 int main(int argc, char* argv[]) {
-
+	
 
 	// IPv4 address of the interface we want to sniff
 	std::string interfaceIPAddr = "192.168.1.1";
-
+	time_t start_t, end_t;
+	double diff_t;
 	// int interval = 2;
 
 	// find the interface by IP address
 	pcpp::PcapLiveDevice* dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIPAddr.c_str());
+	// pcpp::PcapLiveDevice* dev1 = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(interfaceIPAddr.c_str());
 
 	if (dev == NULL)
 	{
@@ -220,56 +251,110 @@ int main(int argc, char* argv[]) {
 
 	// Sending single packets
 	// ~~~~~~~~~~~~~~~~~~~~~~
-	int base = 100;
-	int i=1,j=1;
-	while(true){
 
-			int count = 10;
-			while(count--){
-				pcpp::Packet pktw = createPacket(i, count + 10, 0x2);
-				if (!dev->sendPacket(&pktw))
-				{
-					fprintf(stderr, "Couldn't send packet\n");
-					exit(1);
-				}
-				fprintf(stderr, "write count = %d\n",i);
-				i++;
+	
+	int num_packets = 10, writep = 2, num_batches = 3;
+	int captured;
+	int timeout = 2;
+	// int rw_seq[] = {0x2, 0x6, 0x2, 0x6, 0x2, 0x6, 0x2, 0x6};
+	// int key_seq[] = {12, 12, 14, 14, 16, 16, 18, 18};
+	// int val_seq[] = {94, 95, 96, 97, 98, 99, 100, 101};
 
-				usleep(10000);
+	pcpp::Packet pkt;
+	
+	pcpp::EthLayer newEthernetLayer(pcpp::MacAddress(lg_mac), pcpp::MacAddress(gateway_mac), PCPP_ETHERTYPE_IP);
+	
+	pcpp::IPv4Layer newIPLayer(pcpp::IPv4Address(std::string(lg_ip)), pcpp::IPv4Address(std::string(gateway_ip)));
+	newIPLayer.getIPv4Header()->protocol = pcpp::PACKETPP_IPPROTO_UDP;
+	newIPLayer.getIPv4Header()->ipVersion = 4;
+	newIPLayer.getIPv4Header()->timeToLive = 64;
+	newIPLayer.getIPv4Header()->totalLength = htons(38);
+	
+	pcpp::UdpLayer newUdpLayer(12345, 12346);
+	newUdpLayer.getUdpHeader()->length = htons(18);
 
-				fprintf(stderr, "Packet sent!\n");
+	uint8_t* payload = (uint8_t*)malloc(10);
+	
+	pcpp::PayloadLayer newPayload(payload, 10, 0);
+            
+	pkt.addLayer(&newEthernetLayer);
+	pkt.addLayer(&newIPLayer);
+	pkt.addLayer(&newUdpLayer);
+	pkt.addLayer(&newPayload);
+
+
+	struct timeval stop, start;
+	// int key = 0x0,value = 0x0;
+	for (int biter = 1; biter <= num_batches; biter++) {
+		int num = 0;
+		while (num < num_packets) {
+
+			captured = 0;
+
+			uint8_t* payload_new = newPayload.getPayload();
+			if(num < writep){	
+				createPayload(payload_new, stats.keys[num], stats.vals[num], 0x2);
+			}
+			else {
+				int somenum = (rand() % (writep)) + 1; 
+				// fprintf(stderr, "somenum : %d\n", somenum);
+				createPayload(payload_new, stats.keys[somenum], 129, 0x6);	
+			}
+			
+			gettimeofday(&start, NULL);
+			if (!dev->sendPacket(&pkt))
+			{
+				fprintf(stderr, "Couldn't send packet\n");
+				exit(1);
 			}
 
-			count = 10;
-			while(count--){
-				pcpp::Packet pktr = createPacket(j, 100, 0x6);
+			//fprintf(stderr, "Packet sent!\n");
+			//printf("\nStarting capture in blocking mode...\n");
+	
+			captured = dev->startCaptureBlockingMode(onPacketArrivesBlockingMode, &stats, timeout);
 
-				if (!dev->sendPacket(&pktr))
-				{
-					printf("Couldn't send packet\n");
-					exit(1);
+			if (captured == 1) {
+				gettimeofday(&stop, NULL);
+				if (num < writep) {
+					fprintf(stderr, "Write Packet rcvd\n");
 				}
-				usleep(10000);
-				fprintf(stderr, "read count = %d\n",j);
-				j++;
+				else {
+					fprintf(stderr, "Read Packet rcvd\n");
+				}
+				// diff_t = difftime(end_t, start_t);
+				//stats.printToConsole();
+				fprintf(stderr, "RTT time : %lu\n", stop.tv_usec - start.tv_usec);
 
 			}
-			// if(i==100){
-			// 	fprintf(stderr, "**Band ho gaya*******************************\n");
-			// 	usleep(20000000);
-			// }
-			base += 100;
+
+			num += 1;
+			// stats.clear();
+		
+		}
+
+		stats.incr_offset(20);
+		stats.reinit();
+	
 	}
 
+
+	// pcpp::Packet pktr = createPacket(12, 9, 0x6);
+
+	// if (!dev->sendPacket(&pktr))
+	// {
+	// 	printf("Couldn't send packet\n");
+	// 	exit(1);
+	// }
+	
 	// stop capturing packets
 	// dev->stopCapture();
 
 	// print results
-	 printf("Results:\n");
-	 stats.printToConsole();
+	// printf("Results:\n");
+	// stats.printToConsole();
 
 	// clear stats
-	 stats.clear();
+	// stats.clear();
 
 
 	return 0;
