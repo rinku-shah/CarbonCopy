@@ -16,6 +16,9 @@
 
  package org.onosproject.p4tutorial.mytunnel;
 
+
+
+
  import org.onlab.packet.Ethernet;
  import org.onlab.packet.IPacket;
  import org.onlab.packet.UDP;
@@ -362,8 +365,9 @@ public class MyTunnelApp {
                     }
                 }
                 String response;
+		boolean inserted = false;
                 if(type == Constants.WRITE){
-                  RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
+                  inserted = RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
                   byte[] answer = p;
                   answer[0] = (byte) Constants.WRITE_REPLY;
                   byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
