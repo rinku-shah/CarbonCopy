@@ -9,6 +9,7 @@
 #include "UdpLayer.h"
 #include "PayloadLayer.h"
 #include "PcapLiveDeviceList.h"
+#include "PlatformSpecificUtils.h"
 #include <in.h>
 #include <sys/time.h> 
 #include <sstream>
@@ -20,6 +21,7 @@
 #define gateway_mac "00:16:3e:f5:9c:b0"
 #define gateway_ip "192.168.1.2"
 #define lg_ip "192.168.1.1"
+#define KEY_MAX 100000
 
 struct PacketStats
 {
@@ -31,8 +33,8 @@ struct PacketStats
 	int dnsPacketCount;
 	int httpPacketCount;
 	int sslPacketCount;
-	int keys[100000];
-	int vals[100000];
+	int keys[KEY_MAX];
+	int vals[KEY_MAX];
 	int offset;
 	int writep;
 	int wr_cnt;
@@ -40,6 +42,8 @@ struct PacketStats
 	double rl;
 	double wl;
 	double exp_interval;
+	long double wtime[KEY_MAX];
+	long double rtime[KEY_MAX];
 
 
 	/**
@@ -114,7 +118,7 @@ struct PacketStats
 };
 // We'l count only UDP Packets
 
-void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sync) {
+void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sync, struct timeval start) {
 	
 	// Eth Layer and ipv4 layers are tuned to primary
 	
@@ -125,9 +129,9 @@ void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sy
 	// uint64_t val = 0x94;
 	val = htonl(val);
 	uint8_t *val1 = (uint8_t *)&val;
-	uint8_t version = 0x1;
+	// uint8_t version = 0x1;
 
-	uint8_t result[10];
+	uint8_t result[21];
 	result[0] = type_sync;
 	for (int i= 3; i >= 0; i--)
 	{
@@ -137,13 +141,30 @@ void createPayload(uint8_t* payload, uint32_t key, uint32_t val, uint8_t type_sy
 		// printf("%d \n", val1[i]);
 		result[i+5] = val1[i];
 	}
-	result[9] = version;
-	memcpy(payload, &result, sizeof(result));	 
-	
+	// result[9] = version;
+
+	uint8_t *sec = (uint8_t *)&start.tv_sec;
+	for (int i = 7; i>=0; i--) {
+		result[i+9] = sec[i];
+	}
+
+	uint8_t *usec = (uint8_t *)&start.tv_usec;
+	for (int i = 3; i>=0; i--) {
+		result[i+17] = usec[i];
+	}	
+
+	memcpy(payload, &result, sizeof(result));
+ 
+	fprintf(stderr, "sec : %llu\n", start.tv_sec);
+	fprintf(stderr, "usec : %llu\n", start.tv_usec);
 	// fprintf(stderr, "Payload created\n");
 
 }
 
+
+/**
+ * a callback function for the blocking mode capture which is called each time a packet is captured
+ */
 static void onPacketArrives(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
 {
 	// extract the stats object form the cookie
@@ -154,66 +175,59 @@ static void onPacketArrives(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, 
 
 	// collect stats from packet
 	stats->consumePacket(parsedPacket);
-}
-
-
-/**
- * a callback function for the blocking mode capture which is called each time a packet is captured
- */
-static bool onPacketArrivesBlockingMode(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
-{
-	// extract the stats object form the cookie
-	PacketStats* stats = (PacketStats*)cookie;
-
-	// parsed the raw packet
-	pcpp::Packet parsedPacket(packet);
-
-	// collect stats from packet
-	stats->consumePacket(parsedPacket);
-	pcpp::PayloadLayer* payload = parsedPacket.getLayerOfType<pcpp::PayloadLayer>();
-	if (payload == NULL) {
-		fprintf(stderr, "No Payload Layer\n");
-		return false;
+	// pcpp::IcmpLayer* icmp = parsedPacket.getLayerOfType<pcpp::IcmpLayer>();
+	bool isICMP = 0;
+	if (parsedPacket.isPacketOfType(pcpp::ICMP))
+	{
+		fprintf(stderr, "=============== DANGER !! ICMP packet detected ==============\n");
+		isICMP = 1;
 	}
-
-	pcpp::UdpLayer* udp = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
-	if (udp == NULL) {
-		fprintf(stderr, "No UDP Layer\n");
-		return false;
-	}
-
 	
+	pcpp::UdpLayer* udp = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+	pcpp::PayloadLayer* payload = parsedPacket.getLayerOfType<pcpp::PayloadLayer>();
+	
+		
 	uint8_t* payload_data = payload->getPayload();
 	uint16_t srcPort = ntohs((udp->getUdpHeader())->portSrc);
-	//fprintf(stderr, "srcPort : %d\n", srcPort);
-	//fprintf(stderr, "%d\n", sizeof(payload->getPayload()));
-	// fprintf(stderr, "Payload : %d\n", (int)*payload_data);
 	int type_sync = (int)*payload_data;
-	// for (int j = 0; j < 4;j ++)
-	// {
-	// 	fprintf(stderr, "Payload key : %d\n", payload_data[j+1]);
-	// 	fprintf(stderr, "Payload val : %d\n", payload_data[j+5]);	
-	// }
-	int key = (payload_data[4] | (payload_data[3] << 8) | (payload_data[2] << 16) | (payload_data[1] << 24));
-	// fprintf(stderr, "Payload key : %d\n", key);
 	
-	int val = (int)(payload_data[8] | (payload_data[7] << 8) | (payload_data[6] << 16) | (payload_data[5] << 24));
+	// Check if you get correct key 
+	int key = (payload_data[4] | (payload_data[3] << 8) | (payload_data[2] << 16) | (payload_data[1] << 24));
+	
+	// int val = (int)(payload_data[8] | (payload_data[7] << 8) | (payload_data[6] << 16) | (payload_data[5] << 24));
+	long sec = (payload_data[9] | (payload_data[10] << 8) | (payload_data[11] << 16) | (payload_data[12] << 24) | (payload_data[13] << 32) | (payload_data[14] << 40) | (payload_data[15] << 48) | (payload_data[16] << 56));
+	int usec = (payload_data[17] | (payload_data[18] << 8) | (payload_data[19] << 16) | (payload_data[20] << 24));
+	long double calc_time = (long double)sec*1000.0 + (long double)usec/(double)1000;
 	// fprintf(stderr, "Payload val : %d\n", val);
 	
-	// return false means we don't want to stop capturing after this 
-	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346)) {
+	struct timeval stop;
+
+	if ((type_sync == 3) && (srcPort == 12345 || srcPort ==12346) && !isICMP) {
 		stats->wr_cnt += 1;
-		// fprintf(stderr, "Write Packet rcvd\n");
-		return true;
+		fprintf(stderr, "Write Packet rcvd\n");
+		fprintf(stderr, "Payload key : %d\n", key);
+		fprintf(stderr, "sec : %llu\n", sec);
+		fprintf(stderr, "usec : %llu\n", usec);
+	
+		gettimeofday(&stop, NULL);
+		long double stop_time = (long double)stop.tv_sec*1000.0 + (long double)stop.tv_usec/(double)1000;
+		stats->wl += (double)((long double)stop_time - (long double)calc_time);
+		fprintf(stderr, "RTT time : %lf\n", (double)((long double)stop_time - (long double)calc_time));
 	}
-	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346)) {
+	else if ((type_sync == 1) && (srcPort == 12345 || srcPort ==12346) && !isICMP) {
 		stats->read_cnt += 1;
-		// fprintf(stderr, "Read Packet rcvd\n");
-		return true;
+		fprintf(stderr, "Read Packet rcvd\n");
+		fprintf(stderr, "Payload key : %d\n", key);
+		fprintf(stderr, "sec : %llu\n", sec);
+		fprintf(stderr, "usec : %llu\n", usec);
+
+		gettimeofday(&stop, NULL);
+		long double stop_time = (long double)stop.tv_sec*1000.0 + (long double)stop.tv_usec/(double)1000;
+		stats->rl += (double)((long double)stop_time - (long double)calc_time);
+		fprintf(stderr, "RTT time : %lf\n", (double)((long double)stop_time - (long double)calc_time));
 	}
-	else {
-		return false;
-	}
+
+	
 }
 
 int main(int argc, char* argv[]) {
@@ -233,7 +247,7 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 	// get interface MAC address
-	printf("   MAC address:           %s\n", dev->getMacAddress().toString().c_str());
+	fprintf(stderr, "   MAC address:           %s\n", dev->getMacAddress().toString().c_str());
 
 	// open the device before start capturing/sending packets
 	if (!dev->open())
@@ -260,17 +274,17 @@ int main(int argc, char* argv[]) {
 	// ~~~~~~~~~~~~~~~~~~~~~~
 
 	
-	int num_packets = 10, writep = 5, num_batches = 3, wr_threshold = 10000;
-	int captured;
+	int num_packets = 10, writep = 5, num_batches = 1, wr_threshold = 10000;
+	int readp = num_packets - writep;
 	stats.writep = writep * num_batches;
-	int timeout = 2;
-	stats.offset = 101;
+	double sleep_interval = 0.005;
+	stats.offset = 1;
 	stats.reinit();
-	// stats.exp_interval = 5.0*6.0f;
-	// int rw_seq[] = {0x2, 0x6, 0x2, 0x6, 0x2, 0x6, 0x2, 0x6};
-	// int key_seq[] = {12, 12, 14, 14, 16, 16, 18, 18};
-	// int val_seq[] = {94, 95, 96, 97, 98, 99, 100, 101};
 
+
+
+	// stats.exp_interval = 5.0*6.0f;
+	
 	pcpp::Packet pkt;
 	
 	pcpp::EthLayer newEthernetLayer(pcpp::MacAddress(lg_mac), pcpp::MacAddress(gateway_mac), PCPP_ETHERTYPE_IP);
@@ -284,9 +298,9 @@ int main(int argc, char* argv[]) {
 	pcpp::UdpLayer newUdpLayer(12345, 12346);
 	newUdpLayer.getUdpHeader()->length = htons(18);
 
-	uint8_t* payload = (uint8_t*)malloc(10);
+	uint8_t* payload = (uint8_t*)malloc(21);
 	
-	pcpp::PayloadLayer newPayload(payload, 10, 0);
+	pcpp::PayloadLayer newPayload(payload, 21, 0);
             
 	pkt.addLayer(&newEthernetLayer);
 	pkt.addLayer(&newIPLayer);
@@ -294,7 +308,7 @@ int main(int argc, char* argv[]) {
 	pkt.addLayer(&newPayload);
 
 
-	struct timeval stop, start;
+	struct timeval start;
 	struct timeval exp_start, exp_end;
 	int flag = 0;
 	// int key = 0x0,value = 0x0;
@@ -303,19 +317,21 @@ int main(int argc, char* argv[]) {
 		int num = 0;
 		while (num < num_packets) {
 
-			captured = 0;
-
 			uint8_t* payload_new = newPayload.getPayload();
 			if(num < writep){	
-				createPayload(payload_new, stats.keys[num], stats.vals[num], 0x2);
+				gettimeofday(&start, NULL);
+				createPayload(payload_new, stats.keys[num], stats.vals[num], 0x2, start);
+				// stats.wtime[stats.keys[num]] = (long double)start.tv_usec;
+			
 			}
 			else {
-				int somenum = (rand() % (writep)) + 1; 
-				// fprintf(stderr, "somenum : %d\n", somenum);
-				createPayload(payload_new, stats.keys[somenum], 129, 0x6);	
+				int somenum = (rand() % (writep)); 
+				fprintf(stderr, "Reading key : %d - %d\n", somenum, stats.keys[somenum]);
+				gettimeofday(&start, NULL);
+				createPayload(payload_new, stats.keys[somenum], 129, 0x6, start);
+				// stats.rtime[stats.keys[somenum]] = (long double)start.tv_usec;
 			}
 			
-			gettimeofday(&start, NULL);
 			if (!dev->sendPacket(&pkt))
 			{
 				fprintf(stderr, "Couldn't send packet\n");
@@ -325,26 +341,15 @@ int main(int argc, char* argv[]) {
 			//fprintf(stderr, "Packet sent!\n");
 			//printf("\nStarting capture in blocking mode...\n");
 	
-			captured = dev->startCaptureBlockingMode(onPacketArrivesBlockingMode, &stats, timeout);
+			dev->startCapture(onPacketArrives, &stats);
 
-			if (captured == 1) {
-				gettimeofday(&stop, NULL);
-				if (num < writep) {
-					fprintf(stderr, "Write Packet rcvd\n");
-					stats.wl += (double)((long double)stop.tv_usec - (long double)start.tv_usec)/(long double)1000;
-				}
-				else {
-					fprintf(stderr, "Read Packet rcvd\n");
-					stats.rl += (double)((long double)stop.tv_usec - (long double)start.tv_usec)/(long double)1000;
-				}
-				// diff_t = difftime(end_t, start_t);
-				//stats.printToConsole();
-				fprintf(stderr, "RTT time : %lu\n", (long double)stop.tv_usec - (long double)start.tv_usec);
+			PCAP_SLEEP(sleep_interval);
 
-			}
+			dev->stopCapture();
 
 			num += 1;
 			// stats.clear();
+			fprintf(stderr, "Packet no. : %d\n", num);
 			gettimeofday(&exp_end, NULL);
 			// if ((exp_end.tv_sec - exp_start.tv_sec) > stats.exp_interval) {
 				// flag = 1;
