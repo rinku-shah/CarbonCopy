@@ -13,8 +13,15 @@ struct _srcPortArgs {
 	int endingPort;
 	int numPorts;
 };
+//  Load gen Parameters to tune start here ..........
 
-int flowWeight;	// Number of messages send for encryption/decryption per connection
+int nPut = 1; //Number of writes per cycle
+int nGet = 20; //Number of reads per cycle
+int waitLat = 40000; //Time between any two consecutive requests
+int bucketSize;	// Number of messages send for encryption/decryption per connection
+
+//  Load gen Parameters to tune end here ..........
+
 vector<unsigned long long> num_req_per_thread_P, num_req_per_thread_G, num_req_per_thread;
 vector<unsigned long long> response_time_P, response_time_G, response_time;
 
@@ -48,8 +55,8 @@ int traffic_shape[10][2] = {{5,1},{5,0},{5,7},{6,2},{5,0},{5,5},{5,4},{6,1}};
 //int traffic_shape[5][2] = {{5,0},{5,6},{5,0},{6,6}};
 //int traffic_shape[5][2] = {{2,0},{2,1},{2,2},{2,3}};
 int curr_mix_index=0;
-bool dynLoad = true;
-bool instrumentTptLat = true; //Instrument num_ue and response_time every 10 sec
+bool dynLoad = false;
+bool instrumentTptLat = false; //Instrument num_ue and response_time every 10 sec
 int mix_num=0;	//choose the traffix mix from above traffic_options -> {0,1,2}
 time_t mix_endTime; //End time of current traffic mix
 float tpt[NO_EPOCH] = {0};
@@ -60,7 +67,7 @@ unsigned long long response_time_per_epoch[NO_EPOCH] = {0};
 /// DYNAMIC LOAD GENERATOR VARIABLES END HERE ///
 
 
-bool putFlag = true;
+//bool putFlag = true;
 //int put_percent = 100; //out of 1000 eg. 100 = 10%
 //nPut & nGet are used to generate varied load as put:get
 //0---1:20---5% put
@@ -72,8 +79,7 @@ bool putFlag = true;
 //6---3:1---75%
 //7---1:0---100%
 
-int nPut = 1;
-int nGet = 20;
+
 
 // Thread function for each simulated UE
 void* multithreading_func(void *arg){
@@ -86,42 +92,47 @@ void* multithreading_func(void *arg){
 	time_t curTime;
 	time(&curTime);
 	struct timeval start1, end1; //Used to find time between request send n response received // response time metrics
+	//bool putFlag = true;
 	int key = threadId+1; // key is used for the key
+	int step = key * bucketSize;
+
+	UserEquipment ue(threadId+1);
+    //if((putFlag) && (threadId==0)){
+	gettimeofday(&start, NULL);
+   // if(putFlag){
+		for (int k=0; k<bucketSize; k++){
+			gettimeofday(&start1, NULL);
+			put(user,ue,k+step,k+step);
+			//usleep(1);
+			num_req_per_thread_P[threadId]++;
+			num_req_per_thread[threadId]++;
+			//////PRINT CONN RESP TIME TO ARRAY////
+			gettimeofday(&end1, NULL);
+			seconds  = end1.tv_sec  - start1.tv_sec;
+			useconds = end1.tv_usec - start1.tv_usec;
+			mtime = ((seconds) * 1000000 + useconds);
+			response_time_P[threadId] += mtime;
+			response_time[threadId] += mtime;
+			if(DO_DEBUG){
+					cout<<"Outer Put Key/Val:"<<k+step<<endl;
+			}
+			usleep(waitLat);
+		}
+                //sleep(1);
+		//putFlag=false;
+	//}
 	
-	while(curTime < endTime){
+			//int step = threadId * bucketSize;
+			//cout<<"Step= " <<step<<endl;
+		while(curTime < endTime){
 		do {
-			UserEquipment ue(threadId+1);
 			gettimeofday(&start, NULL);
 
-
-            int step = key * flowWeight;
-            if((putFlag) && (threadId==0)){
-				for (int k=0; k<flowWeight; k++){
-					gettimeofday(&start1, NULL);
-					put(user,ue,key+step,key+step);
-					//usleep(1);
-					num_req_per_thread_P[threadId]++;
-					num_req_per_thread[threadId]++;
-					//////PRINT CONN RESP TIME TO ARRAY////
-					gettimeofday(&end1, NULL);
-					seconds  = end1.tv_sec  - start1.tv_sec;
-					useconds = end1.tv_usec - start1.tv_usec;
-					mtime = ((seconds) * 1000000 + useconds);
-					response_time_P[threadId] += mtime;
-					response_time[threadId] += mtime;
-				}
-		                //sleep(1);
-				putFlag=false;
-			}
-		
-			//int step = threadId * flowWeight;
-			//cout<<"Step= " <<step<<endl;
-			
-			//for (int i=0; i<flowWeight; i++){
+			//for (int i=0; i<bucketSize; i++){
 			for (int k=0; k < nPut; k++){
 				//PUT CODE
 				gettimeofday(&start1, NULL);
-				put(user,ue,key+step,key+step);
+				put(user,ue,k+step,k+step);
 				//usleep(1);
 				num_req_per_thread_P[threadId]++;
 				num_req_per_thread[threadId]++;
@@ -132,11 +143,16 @@ void* multithreading_func(void *arg){
 				mtime = ((seconds) * 1000000 + useconds);
 				response_time_P[threadId] += mtime;
 				response_time[threadId] += mtime;
+				if(DO_DEBUG){
+					cout<<"Inner Put Key/Val:"<<k+step<<endl;
+				}
+				usleep(waitLat);
 			}
+
 			for (int k=0; k < nGet; k++){
 				//GET CODE				
 				gettimeofday(&start1, NULL);
-				get(user,ue,key+step);
+				get(user,ue,k+step);
 				//usleep(1);
 				num_req_per_thread_G[threadId]++;
 				num_req_per_thread[threadId]++;
@@ -147,9 +163,13 @@ void* multithreading_func(void *arg){
 				mtime = ((seconds) * 1000000 + useconds);
 				response_time_G[threadId] += mtime;
 				response_time[threadId] += mtime;
-		        }
+				if(DO_DEBUG){
+					cout<<"Get Key:"<<k+step<<endl;
+				}
+				usleep(waitLat);
+			}
 
-			/*if (key < flowWeight){ //i is used for key
+			/*if (key < bucketSize){ //i is used for key
 					key++;
 			} else
 			{ key = 0;
@@ -260,7 +280,7 @@ int main(int argc, char *args[]){
 	std::ofstream instfile;
 	
 	if(argc != 4){
-		fprintf(stderr,"Usage: %s <max-threads> <program-run-time(in mins)> <num-msg per connection(thin/fat flow)> \n", args[0]);
+		fprintf(stderr,"Usage: %s <max-threads> <program-run-time(in mins)> <Num keys per thread> \n", args[0]);
 		exit(0);
 	}
 
@@ -277,9 +297,9 @@ int main(int argc, char *args[]){
 		exit(0);
 	}
 
-	flowWeight = atoi(args[3]);
-	//cout<<flowWeight;
-	if(flowWeight < 1){
+	bucketSize = atoi(args[3]);
+	//cout<<bucketSize;
+	if(bucketSize < 1){
 		printf("Connection size should be atleast 1 packet\n");
 		exit(0);
 	}
@@ -402,11 +422,13 @@ int main(int argc, char *args[]){
 	cout<<"Average Number of Requests per Thread="<<averageReqPerThread<<endl;
 	printf("Total Execution Time=%ld sec\n", (actual_endTime - curTime));
 	average_response_time = average_response_time/1000000.0;
-	cout<<"Average Request Latency = "<<average_response_time<<" secs"<<endl;
-	cout<<"Put Throughput="<<throughput_P<<" requests/sec"<<endl;
-	cout<<"Get Throughput="<<throughput_G<<" requests/sec"<<endl;
+	cout<<"Average Request Latency = "<<average_response_time<<" us"<<endl;
+	cout<<"Write Throughput="<<throughput_P<<" requests/sec"<<endl;
+	cout<<"Read Throughput="<<throughput_G<<" requests/sec"<<endl;
+	cout<<"Write Latency="<<average_response_time_P<<" us"<<endl;
+	cout<<"Read Latency="<<average_response_time_G<<" us"<<endl;
 	cout<<"Total Throughput="<<throughput<<" requests/sec"<<endl;
-	cout<<"Put Percent="<<percentP<<endl;
+	cout<<"Write Percent="<<percentP<<endl;
 	
 	if (instrumentTptLat) {
 		instfile.open(INST_FILE, std::ios_base::app);
@@ -427,21 +449,21 @@ int main(int argc, char *args[]){
 	/* Write the metrics to the statistics file */
 	if(!fileExists(STATISTIC_FILE)){
 		data.append("#MaxThreads").append(COMMA);
-		data.append("FlowWeight").append(COMMA).append("ExecutionTime").append(COMMA);
-		data.append("#Gets").append(COMMA).append("#Puts").append(COMMA);
-		data.append("GetResponseTime").append(COMMA);
-		data.append("PutResponseTime").append(COMMA);
-		data.append("GetTpt").append(COMMA);
-		data.append("PutTpt").append(COMMA);
+		data.append("bucketSize").append(COMMA).append("ExecutionTime").append(COMMA);
+		data.append("#Reads").append(COMMA).append("#Writes").append(COMMA);
+		data.append("readResponseTime").append(COMMA);
+		data.append("writeResponseTime").append(COMMA);
+		data.append("readTpt").append(COMMA);
+		data.append("writeTpt").append(COMMA);
 		data.append("AvgRequestLatency").append(COMMA).append("AvgThroughput");
-		data.append(COMMA).append("Put%");
+		data.append(COMMA).append("Write%");
 		data.append("\n");
 	}
 
 
 	outfile.open(STATISTIC_FILE, std::ios_base::app);
 	if (outfile.is_open()){
-		data.append(to_string(maxThreads)).append(COMMA).append(to_string(flowWeight)).append(COMMA).append(to_string(tmp).append(COMMA));
+		data.append(to_string(maxThreads)).append(COMMA).append(to_string(bucketSize)).append(COMMA).append(to_string(tmp).append(COMMA));
 		data.append(to_string(total_G)).append(COMMA);
 		data.append(to_string(total_P)).append(COMMA);
 		data.append(to_string(average_response_time_G)).append(COMMA);

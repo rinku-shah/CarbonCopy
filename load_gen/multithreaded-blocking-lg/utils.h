@@ -69,7 +69,7 @@ using namespace std;
 #define UE_PER_THREAD 1000000
 /**************************************** Configurable parameters **********************************************/
 
-#define DEFAULT_IF  "enp1s0f0" //"eth1"   // Default network interface name                                                *
+#define DEFAULT_IF "eth1" //"enp1s0f0"    // Default network interface name                                                *
 #define DGW_IP "192.168.1.2"    // IP address of DGW machine                                                  
 #define CLIENT_IP "192.168.1.1"   // IP address of RAN machine
 

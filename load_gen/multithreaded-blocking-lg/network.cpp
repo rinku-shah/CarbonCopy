@@ -31,13 +31,13 @@
 	tID=2000+ID; //use global tID to distinguish between threads
         //cout<<"TID= "<<tID<<endl;
         //Create a raw socket of type IPPROTO
-        client_socket = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
+    client_socket = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
 	if(MY_DEBUG){
         cout << "Raw Send Socket created"<<endl;
 	}
         //client_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
  	 if(client_socket < 0){
-    	cout << "ERROR opening UDP socket" << endl;
+    	cout << "ERROR opening UDP socket--- Maybe you forgot to run as sudo user!!!" << endl;
     	exit(1);
   	}
 
