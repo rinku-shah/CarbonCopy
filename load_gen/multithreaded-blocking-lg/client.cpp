@@ -15,8 +15,8 @@ struct _srcPortArgs {
 };
 //  Load gen Parameters to tune start here ..........
 
-int nPut = 1; //Number of writes per cycle
-int nGet = 20; //Number of reads per cycle
+int nPut = 1; //Number of writes per cycle; should be less than bucketSize
+int nGet = 20; //Number of reads per cycle; should be less than bucketSize
 int waitLat = 40000; //Time between any two consecutive requests
 int bucketSize;	// Number of messages send for encryption/decryption per connection
 
@@ -103,11 +103,11 @@ void* multithreading_func(void *arg){
 		for (int k=0; k<bucketSize; k++){
 			gettimeofday(&start1, NULL);
 			put(user,ue,k+step,k+step);
+			gettimeofday(&end1, NULL);
 			//usleep(1);
 			num_req_per_thread_P[threadId]++;
 			num_req_per_thread[threadId]++;
 			//////PRINT CONN RESP TIME TO ARRAY////
-			gettimeofday(&end1, NULL);
 			seconds  = end1.tv_sec  - start1.tv_sec;
 			useconds = end1.tv_usec - start1.tv_usec;
 			mtime = ((seconds) * 1000000 + useconds);
@@ -124,7 +124,7 @@ void* multithreading_func(void *arg){
 	
 			//int step = threadId * bucketSize;
 			//cout<<"Step= " <<step<<endl;
-		while(curTime < endTime){
+		//while(curTime < endTime){
 		do {
 			gettimeofday(&start, NULL);
 
@@ -133,11 +133,11 @@ void* multithreading_func(void *arg){
 				//PUT CODE
 				gettimeofday(&start1, NULL);
 				put(user,ue,k+step,k+step);
+				gettimeofday(&end1, NULL);
 				//usleep(1);
 				num_req_per_thread_P[threadId]++;
 				num_req_per_thread[threadId]++;
 				//////PRINT CONN RESP TIME TO ARRAY////
-				gettimeofday(&end1, NULL);
 				seconds  = end1.tv_sec  - start1.tv_sec;
 				useconds = end1.tv_usec - start1.tv_usec;
 				mtime = ((seconds) * 1000000 + useconds);
@@ -153,11 +153,11 @@ void* multithreading_func(void *arg){
 				//GET CODE				
 				gettimeofday(&start1, NULL);
 				get(user,ue,k+step);
+				gettimeofday(&end1, NULL);
 				//usleep(1);
 				num_req_per_thread_G[threadId]++;
 				num_req_per_thread[threadId]++;
 				//////PRINT CONN RESP TIME TO ARRAY////
-				gettimeofday(&end1, NULL);
 				seconds  = end1.tv_sec  - start1.tv_sec;
 				useconds = end1.tv_usec - start1.tv_usec;
 				mtime = ((seconds) * 1000000 + useconds);
@@ -177,13 +177,13 @@ void* multithreading_func(void *arg){
 
 			//usleep(1000);
 			//Terminate the connection
-			gettimeofday(&start1, NULL);
+			/*gettimeofday(&start1, NULL);
 		
 			//////PRINT CONN RESP TIME TO ARRAY////
 			gettimeofday(&end1, NULL);
 			seconds  = end1.tv_sec  - start1.tv_sec;
 			useconds = end1.tv_usec - start1.tv_usec;
-			mtime = ((seconds) * 1000000 + useconds);
+			mtime = ((seconds) * 1000000 + useconds);*/
 
 
 			time(&curTime);
@@ -264,7 +264,7 @@ void* multithreading_func(void *arg){
 //////  INSTRUMENTATION CODE ENDS HERE /////////////////////////////////////////////////////////
 
 		}while(curTime < endTime); //end do-while
-	} //end while
+	//} //end while
 
 	free(args);
 	pthread_exit(NULL);
