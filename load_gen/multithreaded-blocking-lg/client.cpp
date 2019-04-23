@@ -1,7 +1,8 @@
 #include "client.h"
-#define NO_EPOCH 6 
+#define NO_EPOCH 6
 #define INST_ARR_LEN 300
 #define INST_PERIOD 10 // period in secs
+#include <stdlib.h>     /* srand, rand */
 
 struct _threadArgs {
 	int threadId;
@@ -15,7 +16,7 @@ struct _srcPortArgs {
 };
 //  Load gen Parameters to tune start here ..........
 
-int nPut = 1; //Number of writes per cycle; should be less than bucketSize
+int nPut = 20; //Number of writes per cycle; should be less than bucketSize
 int nGet = 20; //Number of reads per cycle; should be less than bucketSize
 int waitLat = 40000; //Time between any two consecutive requests
 int bucketSize;	// Number of messages send for encryption/decryption per connection
@@ -31,14 +32,22 @@ time_t endTime;		// Simulation end time
 long mtime, useconds, seconds; //For resp time calc
 
 double num_ue_inst[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
+double num_ue_inst_P[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
+double num_ue_inst_G[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
 double resp_time_inst[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
+double resp_time_P_inst[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
+double resp_time_G_inst[INST_ARR_LEN] = {0};  // Enough to store 50 min data if captured after every 10 sec
 int instIndex = 0; // Index to remember number of entries in instr arrays
 time_t inst_endTime; //End time of instrumenting current period (10sec)
 unsigned long long prev_tpt = 0; //To remember tpt till previous period
+unsigned long long prev_tpt_P = 0; //To remember tpt till previous period
+unsigned long long prev_tpt_G = 0; //To remember tpt till previous period
 unsigned long long prev_lat = 0; //To remember lat till previous period
+unsigned long long prev_lat_P = 0; //To remember lat till previous period
+unsigned long long prev_lat_G = 0; //To remember lat till previous period
 
 /// DYNAMIC LOAD GENERATOR VARIABLES START HERE  ///
-std::mutex traffic_mtx; 
+std::mutex traffic_mtx;
 std::mutex inst_mtx;
 std::mutex lat_mtx;
 int traffic_shape_size = NO_EPOCH;
@@ -56,7 +65,7 @@ int traffic_shape[10][2] = {{5,1},{5,0},{5,7},{6,2},{5,0},{5,5},{5,4},{6,1}};
 //int traffic_shape[5][2] = {{2,0},{2,1},{2,2},{2,3}};
 int curr_mix_index=0;
 bool dynLoad = false;
-bool instrumentTptLat = false; //Instrument num_ue and response_time every 10 sec
+bool instrumentTptLat = true; //Instrument num_ue and response_time every 10 sec
 int mix_num=0;	//choose the traffix mix from above traffic_options -> {0,1,2}
 time_t mix_endTime; //End time of current traffic mix
 float tpt[NO_EPOCH] = {0};
@@ -102,6 +111,7 @@ void* multithreading_func(void *arg){
    // if(putFlag){
 		for (int k=0; k<bucketSize; k++){
 			gettimeofday(&start1, NULL);
+			// step = (rand() % (bucketSize - 1)) + 1;
 			put(user,ue,k+step,k+step);
 			gettimeofday(&end1, NULL);
 			//usleep(1);
@@ -117,11 +127,60 @@ void* multithreading_func(void *arg){
 					cout<<"Outer Put Key/Val:"<<k+step<<endl;
 			}
 			usleep(waitLat);
+			if(instrumentTptLat && threadId == 0){
+				time(&curTime);
+				if(curTime >= inst_endTime) {
+					//cout<<"start time="<<curTime<<endl;
+					lat_mtx.lock();
+					//num_ue_inst[instIndex] = attNo + detNo + sreqNo;
+					for(int i=0; i<maxThreads; i++){
+						num_ue_inst[instIndex] =  num_ue_inst[instIndex] + num_req_per_thread[i];
+						num_ue_inst_P[instIndex] =  num_ue_inst_P[instIndex] + num_req_per_thread_P[i];
+						num_ue_inst_G[instIndex] =  num_ue_inst_G[instIndex] + num_req_per_thread_G[i];
+						resp_time_inst[instIndex] = resp_time_inst[instIndex] + response_time[i];
+						resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] + response_time_P[i];
+						resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] + response_time_G[i];
+					}
+					lat_mtx.unlock();
+					float prev_t = num_ue_inst[instIndex];
+					float prev_t_P = num_ue_inst_P[instIndex];
+					float prev_t_G = num_ue_inst_G[instIndex];
+					float prev_l = resp_time_inst[instIndex];
+					float prev_l_P = resp_time_P_inst[instIndex];
+					float prev_l_G = resp_time_G_inst[instIndex];
+
+					num_ue_inst[instIndex] = num_ue_inst[instIndex] - prev_tpt; //Get current period val
+					num_ue_inst_P[instIndex] = num_ue_inst_P[instIndex] - prev_tpt_P; //Get current period val
+					num_ue_inst_G[instIndex] = num_ue_inst_G[instIndex] - prev_tpt_G; //Get current period val
+
+					resp_time_inst[instIndex] = resp_time_inst[instIndex] - prev_lat;
+					resp_time_inst[instIndex] = (resp_time_inst[instIndex]*0.001)/num_ue_inst[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+					resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] - prev_lat_P;
+					resp_time_P_inst[instIndex] = (resp_time_P_inst[instIndex]*0.001)/num_ue_inst_P[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+					resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] - prev_lat_G;
+					resp_time_G_inst[instIndex] = (resp_time_G_inst[instIndex]*0.001)/num_ue_inst_G[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+					num_ue_inst[instIndex] = (num_ue_inst[instIndex]*1.0)/INST_PERIOD;
+					prev_tpt = prev_t;
+					prev_tpt_P = prev_t_P;
+					prev_tpt_G = prev_t_G;
+					prev_lat = prev_l;
+					prev_lat_P = prev_l_P;
+					prev_lat_G = prev_l_G;
+					instIndex++;
+					inst_endTime = curTime + (int) INST_PERIOD;
+				}
+			}
+
+
+
 		}
                 //sleep(1);
 		//putFlag=false;
 	//}
-	
+
 			//int step = threadId * bucketSize;
 			//cout<<"Step= " <<step<<endl;
 		//while(curTime < endTime){
@@ -131,8 +190,10 @@ void* multithreading_func(void *arg){
 			//for (int i=0; i<bucketSize; i++){
 			for (int k=0; k < nPut; k++){
 				//PUT CODE
+				int offset = (rand() % (bucketSize));
 				gettimeofday(&start1, NULL);
-				put(user,ue,k+step,k+step);
+
+				put(user,ue,offset + step,offset + step);
 				gettimeofday(&end1, NULL);
 				//usleep(1);
 				num_req_per_thread_P[threadId]++;
@@ -144,15 +205,61 @@ void* multithreading_func(void *arg){
 				response_time_P[threadId] += mtime;
 				response_time[threadId] += mtime;
 				if(DO_DEBUG){
-					cout<<"Inner Put Key/Val:"<<k+step<<endl;
+					cout<<"Inner Put Key/Val:"<<step<<endl;
 				}
 				usleep(waitLat);
+				if(instrumentTptLat && threadId == 0){
+					time(&curTime);
+					if(curTime >= inst_endTime) {
+						//cout<<"start time="<<curTime<<endl;
+						lat_mtx.lock();
+						//num_ue_inst[instIndex] = attNo + detNo + sreqNo;
+						for(int i=0; i<maxThreads; i++){
+							num_ue_inst[instIndex] =  num_ue_inst[instIndex] + num_req_per_thread[i];
+							num_ue_inst_P[instIndex] =  num_ue_inst_P[instIndex] + num_req_per_thread_P[i];
+							num_ue_inst_G[instIndex] =  num_ue_inst_G[instIndex] + num_req_per_thread_G[i];
+							resp_time_inst[instIndex] = resp_time_inst[instIndex] + response_time[i];
+							resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] + response_time_P[i];
+							resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] + response_time_G[i];
+						}
+						lat_mtx.unlock();
+						float prev_t = num_ue_inst[instIndex];
+						float prev_t_P = num_ue_inst_P[instIndex];
+						float prev_t_G = num_ue_inst_G[instIndex];
+						float prev_l = resp_time_inst[instIndex];
+						float prev_l_P = resp_time_P_inst[instIndex];
+						float prev_l_G = resp_time_G_inst[instIndex];
+						num_ue_inst[instIndex] = num_ue_inst[instIndex] - prev_tpt; //Get current period val
+						num_ue_inst_P[instIndex] = num_ue_inst_P[instIndex] - prev_tpt_P; //Get current period val
+						num_ue_inst_G[instIndex] = num_ue_inst_G[instIndex] - prev_tpt_G; //Get current period val
+						resp_time_inst[instIndex] = resp_time_inst[instIndex] - prev_lat;
+						resp_time_inst[instIndex] = (resp_time_inst[instIndex]*0.001)/num_ue_inst[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] - prev_lat_P;
+						resp_time_P_inst[instIndex] = (resp_time_P_inst[instIndex]*0.001)/num_ue_inst_P[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] - prev_lat_G;
+						resp_time_G_inst[instIndex] = (resp_time_G_inst[instIndex]*0.001)/num_ue_inst_G[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						num_ue_inst[instIndex] = (num_ue_inst[instIndex]*1.0)/INST_PERIOD;
+						prev_tpt = prev_t;
+						prev_tpt_P = prev_t_P;
+						prev_tpt_G = prev_t_G;
+						prev_lat = prev_l;
+						prev_lat_P = prev_l_P;
+						prev_lat_G = prev_l_G;
+						instIndex++;
+						inst_endTime = curTime + (int) INST_PERIOD;
+					}
+				}
+
 			}
 
 			for (int k=0; k < nGet; k++){
-				//GET CODE				
+				//GET CODE
+				int offset = (rand() % (bucketSize));
 				gettimeofday(&start1, NULL);
-				get(user,ue,k+step);
+				get(user,ue,offset + step);
 				gettimeofday(&end1, NULL);
 				//usleep(1);
 				num_req_per_thread_G[threadId]++;
@@ -164,21 +271,69 @@ void* multithreading_func(void *arg){
 				response_time_G[threadId] += mtime;
 				response_time[threadId] += mtime;
 				if(DO_DEBUG){
-					cout<<"Get Key:"<<k+step<<endl;
+					cout<<"Get Key:"<<step<<endl;
 				}
 				usleep(waitLat);
+				if(instrumentTptLat && threadId == 0){
+					time(&curTime);
+					if(curTime >= inst_endTime) {
+						//cout<<"start time="<<curTime<<endl;
+						lat_mtx.lock();
+						//num_ue_inst[instIndex] = attNo + detNo + sreqNo;
+						for(int i=0; i<maxThreads; i++){
+							num_ue_inst[instIndex] =  num_ue_inst[instIndex] + num_req_per_thread[i];
+							num_ue_inst_P[instIndex] =  num_ue_inst_P[instIndex] + num_req_per_thread_P[i];
+							num_ue_inst_G[instIndex] =  num_ue_inst_G[instIndex] + num_req_per_thread_G[i];
+							resp_time_inst[instIndex] = resp_time_inst[instIndex] + response_time[i];
+							resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] + response_time_P[i];
+							resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] + response_time_G[i];
+						}
+						lat_mtx.unlock();
+						float prev_t = num_ue_inst[instIndex];
+						float prev_t_P = num_ue_inst_P[instIndex];
+						float prev_t_G = num_ue_inst_G[instIndex];
+						float prev_l = resp_time_inst[instIndex];
+						float prev_l_P = resp_time_P_inst[instIndex];
+						float prev_l_G = resp_time_G_inst[instIndex];
+						num_ue_inst[instIndex] = num_ue_inst[instIndex] - prev_tpt; //Get current period val
+						num_ue_inst_P[instIndex] = num_ue_inst_P[instIndex] - prev_tpt_P; //Get current period val
+						num_ue_inst_G[instIndex] = num_ue_inst_G[instIndex] - prev_tpt_G; //Get current period val
+						resp_time_inst[instIndex] = resp_time_inst[instIndex] - prev_lat;
+						resp_time_inst[instIndex] = (resp_time_inst[instIndex]*0.001)/num_ue_inst[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						resp_time_P_inst[instIndex] = resp_time_P_inst[instIndex] - prev_lat_P;
+						resp_time_P_inst[instIndex] = (resp_time_P_inst[instIndex]*0.001)/num_ue_inst_P[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						resp_time_G_inst[instIndex] = resp_time_G_inst[instIndex] - prev_lat_G;
+						resp_time_G_inst[instIndex] = (resp_time_G_inst[instIndex]*0.001)/num_ue_inst_G[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+
+						num_ue_inst[instIndex] = (num_ue_inst[instIndex]*1.0)/INST_PERIOD;
+						prev_tpt = prev_t;
+						prev_tpt_P = prev_t_P;
+						prev_tpt_G = prev_t_G;
+						prev_lat = prev_l;
+						prev_lat_P = prev_l_P;
+						prev_lat_G = prev_l_G;
+						instIndex++;
+						inst_endTime = curTime + (int) INST_PERIOD;
+					}
+				}
+
+
+
+
 			}
 
 			/*if (key < bucketSize){ //i is used for key
 					key++;
 			} else
 			{ key = 0;
-			}*/				
+			}*/
 
 			//usleep(1000);
 			//Terminate the connection
 			/*gettimeofday(&start1, NULL);
-		
+
 			//////PRINT CONN RESP TIME TO ARRAY////
 			gettimeofday(&end1, NULL);
 			seconds  = end1.tv_sec  - start1.tv_sec;
@@ -201,7 +356,7 @@ void* multithreading_func(void *arg){
 						response_time_per_epoch[curr_mix_index] = response_time_per_epoch[curr_mix_index] + response_time[i];
 					}
 					lat_mtx.unlock();
-	
+
 					if ( curr_mix_index > 0){
 						int i = curr_mix_index;
 						while (i > 0) {
@@ -215,7 +370,7 @@ void* multithreading_func(void *arg){
 
 					tpt[curr_mix_index] = tmp_tpt;
 					lat[curr_mix_index] = tmp_lat;
-					
+
 					if(curr_mix_index < traffic_shape_size){
 						curr_mix_index++;
 					}
@@ -231,34 +386,31 @@ void* multithreading_func(void *arg){
 			}
 			//////  DYNAMIC LOAD GENERATION CODE ENDS HERE /////////////////////////////////////////////////////////
 
-	
+
 			//////  INSTRUMENTATION CODE STARTS HERE /////////////////////////////////////////////////////////
-			
-			if(instrumentTptLat){
-				inst_mtx.lock();
-				time(&curTime);
-				if(curTime >= inst_endTime) {
-					//cout<<"start time="<<curTime<<endl;
-					lat_mtx.lock();
-					//num_ue_inst[instIndex] = attNo + detNo + sreqNo;
-					for(int i=0; i<maxThreads; i++){
-						num_ue_inst[instIndex] =  num_ue_inst[instIndex] + num_req_per_thread[i];
-						resp_time_inst[instIndex] = resp_time_inst[instIndex] + response_time[i];
-					}
-					lat_mtx.unlock();
-					float prev_t = num_ue_inst[instIndex];
-					float prev_l = resp_time_inst[instIndex];
-					num_ue_inst[instIndex] = num_ue_inst[instIndex] - prev_tpt; //Get current period val
-					resp_time_inst[instIndex] = resp_time_inst[instIndex] - prev_lat;
-					resp_time_inst[instIndex] = (resp_time_inst[instIndex]*0.001)/num_ue_inst[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
-					num_ue_inst[instIndex] = (num_ue_inst[instIndex]*1.0)/INST_PERIOD;
-					prev_tpt = prev_t;
-					prev_lat = prev_l;
-					instIndex++;
-					inst_endTime = curTime + (int) INST_PERIOD;
-				}
-				inst_mtx.unlock();
-			}
+			// if(instrumentTptLat && threadId == 0){
+			// 	time(&curTime);
+			// 	if(curTime >= inst_endTime) {
+			// 		//cout<<"start time="<<curTime<<endl;
+			// 		lat_mtx.lock();
+			// 		//num_ue_inst[instIndex] = attNo + detNo + sreqNo;
+			// 		for(int i=0; i<maxThreads; i++){
+			// 			num_ue_inst[instIndex] =  num_ue_inst[instIndex] + num_req_per_thread[i];
+			// 			resp_time_inst[instIndex] = resp_time_inst[instIndex] + response_time[i];
+			// 		}
+			// 		lat_mtx.unlock();
+			// 		float prev_t = num_ue_inst[instIndex];
+			// 		float prev_l = resp_time_inst[instIndex];
+			// 		num_ue_inst[instIndex] = num_ue_inst[instIndex] - prev_tpt; //Get current period val
+			// 		resp_time_inst[instIndex] = resp_time_inst[instIndex] - prev_lat;
+			// 		resp_time_inst[instIndex] = (resp_time_inst[instIndex]*0.001)/num_ue_inst[instIndex]; //Keep it bfor num_ue_inst update coz we need total number and not throughtput
+			// 		num_ue_inst[instIndex] = (num_ue_inst[instIndex]*1.0)/INST_PERIOD;
+			// 		prev_tpt = prev_t;
+			// 		prev_lat = prev_l;
+			// 		instIndex++;
+			// 		inst_endTime = curTime + (int) INST_PERIOD;
+			// 	}
+			// }
 
 
 //////  INSTRUMENTATION CODE ENDS HERE /////////////////////////////////////////////////////////
@@ -278,7 +430,7 @@ int main(int argc, char *args[]){
 	std::ofstream outfile;
 	std::ofstream delayfile;
 	std::ofstream instfile;
-	
+
 	if(argc != 4){
 		fprintf(stderr,"Usage: %s <max-threads> <program-run-time(in mins)> <Num keys per thread> \n", args[0]);
 		exit(0);
@@ -310,7 +462,7 @@ int main(int argc, char *args[]){
 	response_time_P.resize(maxThreads, 0);
 	response_time_G.resize(maxThreads, 0);
 	response_time.resize(maxThreads, 0);
-      	
+
 	cout<<"***************STARTING NOW***************"<<endl;
 	tmp = tmp * 60;
 	time_t curTime;
@@ -328,7 +480,7 @@ int main(int argc, char *args[]){
 	pthread_t tid[maxThreads];
 
 	///////// DYNAMIC LOAD GEN in MAIN STARTS ///////////////
-	if (dynLoad){	
+	if (dynLoad){
 		cout<<"start time="<<curTime<<endl;
 		int tmp1 = traffic_shape[curr_mix_index][0] * 60;
 		mix_endTime = curTime + (int) tmp1;
@@ -340,7 +492,7 @@ int main(int argc, char *args[]){
 
 	///// INSTRUMENTATION CODE STARTS /////////
 
-	if (instrumentTptLat){	
+	if (instrumentTptLat){
 
 		int tmp2 = INST_PERIOD;
 		inst_endTime = curTime + (int) tmp2;
@@ -373,7 +525,7 @@ int main(int argc, char *args[]){
 	if(DO_DEBUG){
 		cout<<"************ENDED!!!************"<<endl;
 	}
-////////////////////////////////////////////////////////////////////////////////////////////////////	
+////////////////////////////////////////////////////////////////////////////////////////////////////
 	/* Calculate and display various metrics */
 	string s = "";
 	int total_G = 0;
@@ -408,7 +560,7 @@ int main(int argc, char *args[]){
 	percentP = (throughput_P/throughput)*100;
 	cout<<"***************************************STATISTICS***************************************"<<endl;
 	double averageReqPerThread = (((total_P + total_G)*1.0)/maxThreads);
-	averageReqPerThread = roundf(averageReqPerThread * 100) / 100; 
+	averageReqPerThread = roundf(averageReqPerThread * 100) / 100;
 
 
 	ostringstream strsR;
@@ -429,7 +581,7 @@ int main(int argc, char *args[]){
 	cout<<"Read Latency="<<average_response_time_G<<" us"<<endl;
 	cout<<"Total Throughput="<<throughput<<" requests/sec"<<endl;
 	cout<<"Write Percent="<<percentP<<endl;
-	
+
 	if (instrumentTptLat) {
 		instfile.open(INST_FILE, std::ios_base::app);
 		data = "";
@@ -437,8 +589,12 @@ int main(int argc, char *args[]){
 			//cout<<"inst_index="<<instIndex<<endl;
 			for(int i = 0; i < instIndex; i++){
 				float t = num_ue_inst[i];
+				float t_P = num_ue_inst_P[i];
+				float t_G = num_ue_inst_G[i];
 				float l = resp_time_inst[i];
-				data.append(to_string(t)).append(COMMA).append(to_string(l)).append("\n");
+				float l_P = resp_time_P_inst[i];
+				float l_G = resp_time_G_inst[i];
+				data.append(to_string(t)).append(COMMA).append(to_string(t_P)).append(COMMA).append(to_string(t_G)).append(COMMA).append(to_string(l)).append(COMMA).append(to_string(l_P)).append(COMMA).append(to_string(l_G)).append("\n");
 
 			}
 			instfile << data;
@@ -473,7 +629,7 @@ int main(int argc, char *args[]){
 		data.append(to_string(throughput_P)).append(COMMA);
 		data.append(to_string(average_response_time)).append(COMMA);
 		data.append(to_string(throughput)).append(COMMA);
-		data.append(to_string(percentP));	
+		data.append(to_string(percentP));
 	}
 	data.append("\n");
 	outfile << data;
@@ -483,8 +639,8 @@ int main(int argc, char *args[]){
 }
 
 inline bool fileExists (const std::string& name) {
-	struct stat buffer;   
-	return (stat (name.c_str(), &buffer) == 0); 
+	struct stat buffer;
+	return (stat (name.c_str(), &buffer) == 0);
 }
 
 void get(Network &user,UserEquipment &ue, int key){
@@ -507,35 +663,35 @@ void setMix(int traffic_type){
 //7---1:0---100%
 
 	switch(traffic_type){
-		case 0: 
+		case 0:
 			nPut=1;
 			nGet=20;
 			break;
-		case 1: 
+		case 1:
 			nPut=1;
 			nGet=10;
 			break;
-		case 2: 
+		case 2:
 			nPut=1;
 			nGet=5;
 			break;
-		case 3: 
+		case 3:
 			nPut=1;
 			nGet=3;
 			break;
-		case 4: 
+		case 4:
 			nPut=1;
 			nGet=1;
 			break;
-		case 5: 
+		case 5:
 			nPut=2;
 			nGet=1;
 			break;
-		case 6: 
+		case 6:
 			nPut=3;
 			nGet=1;
 			break;
-		case 7: 
+		case 7:
 			nPut=1;
 			nGet=0;
 			break;
@@ -544,7 +700,3 @@ void setMix(int traffic_type){
 			break;
 	}
 }
-
-
-
-
