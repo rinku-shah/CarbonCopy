@@ -52,7 +52,8 @@ public class Rule_insertion2{
 
 	/* Declare the variables inside the pipeconf file */
 
-	public void populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,byte[] key_byte, byte [] value_byte){
+	public boolean populate_kv_store(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId,byte[] key_byte, byte [] value_byte){
+	boolean is_inserted = false;
 	PiTableId tunnelIngressTableId = PiTableId.of("c_ingress.kv_store");
     PiMatchFieldId keyID = PiMatchFieldId.of("hdr.data.key1");
 		// byte[] MASK = new byte[] { (byte)0xff, (byte)0xff, (byte)0xff,
@@ -73,12 +74,27 @@ public class Rule_insertion2{
             .withParameter(valueParam)
             .build();
 
-    insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
+    FlowRule ins_rule = insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
 
-	}
+		// Thread.sleep(1000);
+		while(true){
+			Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
+	    for (FlowRule f : rules) {
+				boolean equality = ins_rule.equals(f);
+				if (equality == true) {
+					is_inserted = true;
+					break;
+					}
+			}
+			if(is_inserted)	break;	
+		}
+
+		return is_inserted;
+		// return true;
+  }
 
 
-    private void insertPiFlowRule(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId, PiTableId tableId,
+    private FlowRule insertPiFlowRule(ApplicationId appId,FlowRuleService flowRuleService,DeviceId switchId, PiTableId tableId,
                                   PiCriterion piCriterion, PiAction piAction) {
 // makeTemporary(int timeout)
 			  FlowRule rule = DefaultFlowRule.builder()
@@ -93,6 +109,7 @@ public class Rule_insertion2{
                                        .piTableAction(piAction).build())
                 .build();
         flowRuleService.applyFlowRules(rule);
+	return rule;
     }
 
 

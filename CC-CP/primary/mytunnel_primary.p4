@@ -134,6 +134,11 @@ control c_egress(inout headers hdr,
             tempip4 = hdr.ipv4.srcAddr;
             hdr.ipv4.srcAddr = hdr.ipv4.dstAddr;
             hdr.ipv4.dstAddr = tempip4;
+
+            bit<16> tempPort;
+            tempPort = hdr.udp.srcPort;
+            hdr.udp.srcPort = hdr.udp.dstPort;
+            hdr.udp.dstPort = tempPort;
         }
     }
 

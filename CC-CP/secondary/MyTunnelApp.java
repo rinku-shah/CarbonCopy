@@ -374,7 +374,7 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,answer);
                 }
             }
             else {
@@ -386,9 +386,9 @@ public class MyTunnelApp {
         }
 
 
-        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,byte[] response){
             Data payload_data = new Data();
-            payload_data.setData(response.toString().getBytes());
+            payload_data.setData(response);
             UDP udp = new UDP();
             udp.setSourcePort(udp_dstport);
             udp.setDestinationPort(udp_srcport);

@@ -347,7 +347,7 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
              log.info("context is already handled");
               return;
           }
-          log.info("Got the Packet");
+          // log.info("Got the Packet");
 
           InboundPacket pkt = context.inPacket();
           ConnectPoint connectPoint = pkt.receivedFrom();
@@ -494,10 +494,13 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
               }
               String response;
               DeviceId backupId = org.onosproject.net.DeviceId.deviceId("device:bmv2:s2");
+              boolean inserted1 = false;
+              boolean inserted2 = false;
 
               if(type == Constants.WRITE){
-                RI2.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
-                RI2.populate_kv_store(appId,flowRuleService,backupId,b2,b3);
+                inserted1 = RI2.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
+                inserted2 = RI2.populate_kv_store(appId,flowRuleService,backupId,b2,b3);
+
                 KeyValueMap.put(key,value);
                 byte[] answer = p;
                 answer[0] = (byte) Constants.WRITE_REPLY;
@@ -509,7 +512,12 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
                 if(Constants.DEBUG){
                   log.warn("response = {}",response);
                 }
-                build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                if (inserted1 == true && inserted2 == true) {
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,answer);
+                }
+                else{
+                  log.warn("FlowRule Not inserted");
+                }
               }
           }
           else {
@@ -521,9 +529,9 @@ public class MyTunnelApp extends AbstractProvider implements LinkProvider {
       }
 
 
-      private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+      private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,byte[] response){
           Data payload_data = new Data();
-          payload_data.setData(response.toString().getBytes());
+          payload_data.setData(response);
           UDP udp = new UDP();
           udp.setSourcePort(udp_dstport);
           udp.setDestinationPort(udp_srcport);
