@@ -217,7 +217,7 @@ public class MyTunnelApp {
                log.info("context is already handled");
                 return;
             }
-            log.info("Got the Packet");
+            // log.info("Got the Packet");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -362,8 +362,9 @@ public class MyTunnelApp {
                     }
                 }
                 String response;
+		            boolean inserted = false;
                 if(type == Constants.WRITE){
-                  RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
+                  inserted = RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
                   byte[] answer = p;
                   answer[0] = (byte) Constants.WRITE_REPLY;
                   byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
@@ -374,7 +375,7 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,answer);
                 }
             }
             else {
@@ -386,9 +387,9 @@ public class MyTunnelApp {
         }
 
 
-        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,byte[] response){
             Data payload_data = new Data();
-            payload_data.setData(response.toString().getBytes());
+            payload_data.setData(response);
             UDP udp = new UDP();
             udp.setSourcePort(udp_dstport);
             udp.setDestinationPort(udp_srcport);

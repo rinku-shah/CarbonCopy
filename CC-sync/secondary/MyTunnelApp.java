@@ -453,7 +453,6 @@ public class MyTunnelApp {
 
 
         private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,byte[] response){
-          log.warn("Here .....");
             Data payload_data = new Data();
             payload_data.setData(response);
             // payload_data.setData(response.toString().getBytes());

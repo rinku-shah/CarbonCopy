@@ -16,6 +16,7 @@
 
  package org.onosproject.p4tutorial.mytunnel;
 
+
  import org.onlab.packet.Ethernet;
  import org.onlab.packet.IPacket;
  import org.onlab.packet.UDP;
@@ -189,6 +190,22 @@ public class MyTunnelApp {
 
         TrafficSelector.Builder selector = DefaultTrafficSelector.builder();
         packetService.requestPackets(selector.build(), PacketPriority.REACTIVE, appId);
+
+        // /* PacketPriority.REACTIVE = packets are only sent to the
+        // controller if they fail to match any of the rules installed in the switch.  */
+        // /* PacketPriority.CONTROL = High priority for control traffic this will result in all
+        // traffic matching the selector to be sent to controller */
+        // int packet_type = Constants.WRITE;
+        // int PORTMASK = 0xff;
+        // PiMatchFieldId packetType = PiMatchFieldId.of("hdr.data.type_sync");
+        // // PiCriterion match = PiCriterion.builder()
+        // //         .matchTernary(packetType, packet_type,PORTMASK)
+        // //         .build();
+        // PiCriterion match = PiCriterion.builder()
+        //         .matchExact(packetType, packet_type)
+        //         .build();
+        // packetService.requestPackets(selector.matchPi(match).build(), PacketPriority.CONTROL, appId);
+
     }
 
 
@@ -210,22 +227,23 @@ public class MyTunnelApp {
 
         @Override
         public void process(PacketContext context) {
-
             // Stop processing if the packet has been handled, since we
             // can't do any more to it.
+
             if (context.isHandled()) {
                log.info("context is already handled");
                 return;
             }
-            log.info("Got the Packet");
+
+            // log.info("Got the Packet");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
             DeviceId deviceId = pkt.receivedFrom().deviceId();
             if(Constants.DEBUG) {
-                log.info("Packet received from {}", connectPoint);
-                log.info("Device ID {}", deviceId);
-                log.info("Packet details {}", pkt);
+                log.warn("Packet received from {}", connectPoint);
+                log.warn("Device ID {}", deviceId);
+                log.warn("Packet details {}", pkt);
             }
             // parse the incoming packet as Ethernet frame
             Ethernet ethPkt = pkt.parsed();
@@ -256,10 +274,14 @@ public class MyTunnelApp {
             /****************   PARSE Ethernet srcMAC and dstMAC ***************************/
             MacAddress srcMac = ethPkt.getSourceMAC();
             MacAddress dstMac = ethPkt.getDestinationMAC();
+            //            log.warn("srcMACAddrestype = {}",ethPkt.getSourceMAC().getClass().getName());
             if(Constants.DEBUG) {
-                log.info("srcMACAddres = {}", srcMac);
-                log.info("dstMACAddres = {}", dstMac);
+                log.warn("srcMACAddres = {}", srcMac);
+                log.warn("dstMACAddres = {}", dstMac);
             }
+//            log.warn("srcMACAddres = {}",dstMac.getClass().getName());     // gives org.onlab.packet.MacAddress
+
+
             //parse the incoming packet as IP packet
             IPacket ipPkt = pkt.parsed();
             // ipheader will have IPv4 header
@@ -273,6 +295,16 @@ public class MyTunnelApp {
 
             byte protocol = tmp_ipv4Packet.getProtocol();
             IPacket final_payload = tcp_udp_header.getPayload();
+            // if (protocol == IPv4.PROTOCOL_UDP) {
+            //     if(Constants.DEBUG){
+            //         log.info("received non-UDP packet. Returning ");
+            //         }
+
+            // }
+            // else {
+            //     return;
+            // }
+
 
             byte ipv4Protocol=IPv4.PROTOCOL_UDP;
             int ipv4SourceAddress = 0;
@@ -300,9 +332,19 @@ public class MyTunnelApp {
                                           Ip4Prefix.MAX_MASK_LENGTH);
 
                  DGW_IPAddr = ipv4Packet.fromIPv4Address(ipv4SourceAddress);  // returns string IP of DGW_IPAddr
+
+                //    log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
+                //    log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
+
+
+
+//            log.warn("ipv4srcAddrestype = {}",matchIp4SrcPrefix.getClass().getName());  // gives org.onlab.packet.Ip4Prefix
                 if(Constants.DEBUG) {
-                   log.info("ipv4srcAddres = {}", matchIp4SrcPrefix);
-                   log.info("ipv4dstAddres = {}", matchIp4DstPrefix);
+                   log.warn("ipv4srcAddres = {}", matchIp4SrcPrefix);
+                   log.warn("ipv4dstAddres = {}", matchIp4DstPrefix);
+//                    log.warn("ipv4Packet class = {}",ipv4Packet.getClass().getName());
+//                    log.warn("ipv4SourceAddress value = {}",ipv4SourceAddress);
+//                    log.warn("dstip clas = {}",dstip.getClass().getName());
                 }
 
 
@@ -313,8 +355,8 @@ public class MyTunnelApp {
                     tcp_srcport = tcpPacket.getSourcePort();
                     tcp_dstport = tcpPacket.getDestinationPort();
                     if (Constants.DEBUG) {
-                        log.info("TCP srcPort = {}", tcp_srcport);
-                        log.info("TCP dstPort = {}", tcp_dstport);
+                        log.warn("TCP srcPort = {}", tcp_srcport);
+                        log.warn("TCP dstPort = {}", tcp_dstport);
                     }
                 }
                 /****************   PARSE UDP SrcPort and DstPort ***************************/
@@ -324,8 +366,8 @@ public class MyTunnelApp {
                     udp_srcport = udpPacket.getSourcePort();
                     udp_dstport = udpPacket.getDestinationPort();
                     if(Constants.DEBUG) {
-                        log.info("UDP srcPort = {}", udp_srcport);
-                        log.info("UDP dstPort = {}", udp_dstport);
+                        log.warn("UDP srcPort = {}", udp_srcport);
+                        log.warn("UDP dstPort = {}", udp_dstport);
                     }
                 }
                 if (ipv4Protocol == IPv4.PROTOCOL_ICMP) {
@@ -342,28 +384,48 @@ public class MyTunnelApp {
                     log.warn("payload direct = {}",((Data)final_payload).getData());
                 }
                 byte[] p =((Data)final_payload).getData();
+
                 byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
                 byte [] b2 = Arrays.copyOfRange(p, 1, 5); //key
                 byte [] b3 = Arrays.copyOfRange(p, 5, 9); //value
                 byte [] b4 = Arrays.copyOfRange(p, 9, 10); //value
+
+
                 byte code = ByteBuffer.wrap(b1).get();
                 int type = code;
+                // String key1 = new String(b2, StandardCharsets.UTF_8); //16 byte
+                //       String value = new String(b3, StandardCharsets.UTF_8); //16 byte
+
 
                 ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
+                // int first = bb.getShort(); //pull off a 16 bit short (1, 5)
+                // int second = bb.get(); //pull off the next byte (5)
+                // log.warn("msg id  = {}",second);
+                // String third = Integer.toString(bb.getInt()); //pull off the next 32 bit int (0, 1, 0, 5)
+                // log.warn("sep = {}",third);
+                // System.out.println(first + " " + second + " " + third);
                 payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
                 if (ethPkt == null) {
                     return;
                 }
                 else{
+    //                log.warn("Packet contains !!!!! {}",ethPkt.toString());
+                    // if(Constants.DEBUG) {
                     if(Constants.DEBUG) {
-                        log.info(" {}", ipheader);
-                        log.info(" {}", tcp_udp_header);
-                        log.info("Packet payload = {}",payload);
+                        log.warn(" {}", ipheader);
+                        log.warn(" {}", tcp_udp_header);
+                        log.warn("Packet payload = {}",payload);
+
                     }
+                    // returns org.onlab.packet.Data as type of final_payload
+                    // final_payload is ASCII encoded bytearray
+    //                log.warn("Packet contains ????? {}",final_payload.getClass().getName());    // gives org.onlab.packet.Data
                 }
+
                 String response;
+		boolean inserted = false;
                 if(type == Constants.WRITE){
-                  RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
+                  inserted = RI.populate_kv_store(appId,flowRuleService,deviceId,b2,b3);
                   byte[] answer = p;
                   answer[0] = (byte) Constants.WRITE_REPLY;
                   byte [] type_bit = Arrays.copyOfRange(answer, 0, 1);
@@ -374,21 +436,26 @@ public class MyTunnelApp {
                   if(Constants.DEBUG){
                     log.warn("response = {}",response);
                   }
-                  build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,response);
+          		  if (inserted == true) {
+          			// log.info("--- CHECKED FOR INSERTION : PASS --- ");
+                  	build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,answer);
+			           }
                 }
+
             }
             else {
-                if(Constants.DEBUG){
-                    log.info("received non-UDP packet. Returning ");
-                }
+                    if(Constants.DEBUG){
+                        log.info("received non-UDP packet. Returning ");
+                    }
                 return;
             }
         }
 
 
-        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,String response){
+        private void build_response_pkt(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress,int udp_dstport,int udp_srcport,byte[] response){
             Data payload_data = new Data();
-            payload_data.setData(response.toString().getBytes());
+            payload_data.setData(response);
+            // payload_data.setData(response.toString().getBytes());
             UDP udp = new UDP();
             udp.setSourcePort(udp_dstport);
             udp.setDestinationPort(udp_srcport);
@@ -404,8 +471,8 @@ public class MyTunnelApp {
 
 
             if(Constants.DEBUG){
-                log.info("sending payload as = {}",response);
-                log.info("Sending IP header as  : {}",ip_pkt);
+                log.warn("sending payload as = {}",response);
+                log.warn("Sending IP header as  : {}",ip_pkt);
             }
 
             Ethernet ethernet = new Ethernet();
@@ -414,23 +481,23 @@ public class MyTunnelApp {
                     .setSourceMACAddress(dstMac)
                     .setPayload(ip_pkt);
                     if(Constants.DEBUG){
-                        log.info("1 sending payload as = {}",response);
-                        log.info("1 Sending IP header as  : {}",ip_pkt);
+                        log.warn("1 sending payload as = {}",response);
+                        log.warn("1 Sending IP header as  : {}",ip_pkt);
                     }
 
             TrafficTreatment treatment = DefaultTrafficTreatment.builder()
                     .setOutput(connectPoint.port())
                     .build();
                     if(Constants.DEBUG){
-                        log.info("2 sending payload as = {}",response);
-                        log.info("2 Sending IP header as  : {}",ip_pkt);
+                        log.warn("2 sending payload as = {}",response);
+                        log.warn("2 Sending IP header as  : {}",ip_pkt);
                     }
             OutboundPacket outboundPacket =
                     new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
                                               ByteBuffer.wrap(ethernet.serialize()));
             if(Constants.DEBUG) {
-              log.info("Processing outbound packet: {}", outboundPacket);
-                log.info("Ethernet packet: {}", ethernet);
+              log.warn("Processing outbound packet: {}", outboundPacket);
+                log.warn("Ethernet packet: {}", ethernet);
             }
 
             packetService.emit(outboundPacket);
