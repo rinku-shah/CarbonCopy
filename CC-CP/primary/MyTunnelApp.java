@@ -217,7 +217,7 @@ public class MyTunnelApp {
                log.info("context is already handled");
                 return;
             }
-            log.info("Got the Packet");
+            // log.info("Got the Packet");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -337,8 +337,6 @@ public class MyTunnelApp {
             }
 
             if (!srcIPAddr.equals("192.168.100.100")) {
-              log.warn("Hereeeeeee");
-
                 String payload;
                 if(Constants.BITWISE_DEBUG){
                     log.warn("payload direct = {}",((Data)final_payload).getData());

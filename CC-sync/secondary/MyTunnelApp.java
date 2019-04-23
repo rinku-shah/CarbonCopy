@@ -235,7 +235,7 @@ public class MyTunnelApp {
                 return;
             }
 
-            log.info("Got the Packet");
+            // log.info("Got the Packet");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
@@ -437,7 +437,7 @@ public class MyTunnelApp {
                     log.warn("response = {}",response);
                   }
           		  if (inserted == true) {
-          			log.info("--- CHECKED FOR INSERTION : PASS --- ");
+          			// log.info("--- CHECKED FOR INSERTION : PASS --- ");
                   	build_response_pkt(connectPoint,srcMac,dstMac,ipv4Protocol,ipv4SourceAddress,udp_dstport,udp_srcport,answer);
 			           }
                 }

@@ -217,7 +217,7 @@ public class MyTunnelApp {
                log.info("context is already handled");
                 return;
             }
-            log.info("Got the Packet");
+            // log.info("Got the Packet");
 
             InboundPacket pkt = context.inPacket();
             ConnectPoint connectPoint = pkt.receivedFrom();
