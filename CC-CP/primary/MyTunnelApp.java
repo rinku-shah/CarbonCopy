@@ -335,19 +335,27 @@ public class MyTunnelApp {
                         return;
                 }
             }
+            byte[] p =((Data)final_payload).getData();
+            byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
+            byte [] b2 = Arrays.copyOfRange(p, 1, 5); //key
+            byte [] b3 = Arrays.copyOfRange(p, 5, 9); //value
+            byte [] b4 = Arrays.copyOfRange(p, 9, 10); //value
+            byte code = ByteBuffer.wrap(b1).get();
+            int type = code;
 
+            if(type == Constants.WRITE_REPLY){
+              MacAddress gateway_mac = MacAddress.valueOf("00:16:3e:f5:9c:b1");
+              MacAddress primary_mac = MacAddress.valueOf("00:16:3e:98:d2:1c");
+              build_response_pkt2(connectPoint,gateway_mac,primary_mac,ipv4Protocol,ipv4SourceAddress,ipv4DstAddress, udp_dstport,udp_srcport,p);
+                return;
+            }
             if (!srcIPAddr.equals("192.168.100.100")) {
                 String payload;
                 if(Constants.BITWISE_DEBUG){
                     log.warn("payload direct = {}",((Data)final_payload).getData());
                 }
-                byte[] p =((Data)final_payload).getData();
-                byte [] b1 = Arrays.copyOfRange(p, 0, 1); //code
-                byte [] b2 = Arrays.copyOfRange(p, 1, 5); //key
-                byte [] b3 = Arrays.copyOfRange(p, 5, 9); //value
-                byte [] b4 = Arrays.copyOfRange(p, 9, 10); //value
-                byte code = ByteBuffer.wrap(b1).get();
-                int type = code;
+
+
 
                 ByteBuffer bb = ByteBuffer.wrap(((Data)final_payload).getData());
                 payload = new String((((Data)final_payload).getData()),  Charset.forName("UTF-8"));
@@ -442,6 +450,62 @@ public class MyTunnelApp {
             packetService.emit(outboundPacket);
 
         }
+
+        private void build_response_pkt2(ConnectPoint connectPoint,MacAddress srcMac,MacAddress dstMac,byte ipv4Protocol,int ipv4SourceAddress, int ipv4DstAddress, int udp_dstport,int udp_srcport,byte[] response){
+            Data payload_data = new Data();
+            payload_data.setData(response);
+            UDP udp = new UDP();
+            udp.setSourcePort(udp_srcport);
+            udp.setDestinationPort(udp_dstport);
+            udp.setPayload(payload_data);
+
+            IPv4 ip_pkt = new IPv4();
+            byte ttl = 64;
+            ip_pkt.setDestinationAddress(ipv4DstAddress);
+            // ip_pkt.setDestinationAddress();
+            // ip_pkt.setSourceAddress(ipv4SourceAddress);   // controller IP is hardcoded in Constants.java file
+            ip_pkt.setSourceAddress(ipv4SourceAddress);   // controller IP is hardcoded in Constants.java file
+            ip_pkt.setProtocol(ipv4Protocol);   //assuming that pacet will always be UDP
+            ip_pkt.setTtl(ttl);
+            ip_pkt.setPayload(udp);
+
+
+            if(Constants.DEBUG){
+                log.info("sending payload as = {}",response);
+                log.info("Sending IP header as  : {}",ip_pkt);
+            }
+
+            Ethernet ethernet = new Ethernet();
+            ethernet.setEtherType(Ethernet.TYPE_IPV4)
+                    .setDestinationMACAddress(srcMac)
+                    .setSourceMACAddress(dstMac)
+                    .setPayload(ip_pkt);
+                    if(Constants.DEBUG){
+                        log.info("1 sending payload as = {}",response);
+                        log.info("1 Sending IP header as  : {}",ip_pkt);
+                    }
+
+            PortNumber backup_port = PortNumber.portNumber(1);
+
+            TrafficTreatment treatment = DefaultTrafficTreatment.builder()
+                    .setOutput(backup_port)
+                    .build();
+                    if(Constants.DEBUG){
+                        log.info("2 sending payload as = {}",response);
+                        log.info("2 Sending IP header as  : {}",ip_pkt);
+                    }
+            OutboundPacket outboundPacket =
+                    new DefaultOutboundPacket(connectPoint.deviceId(), treatment,
+                                              ByteBuffer.wrap(ethernet.serialize()));
+            if(Constants.DEBUG) {
+              log.info("Processing outbound packet: {}", outboundPacket);
+                log.info("Ethernet packet: {}", ethernet);
+            }
+
+            packetService.emit(outboundPacket);
+
+        }
+
 
         // Indicates whether this is a control packet, e.g. LLDP, BDDP
         private boolean isControlPacket(Ethernet eth) {

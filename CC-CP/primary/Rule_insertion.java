@@ -75,7 +75,6 @@ public class Rule_insertion{
             .build();
 
     FlowRule ins_rule = insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
-    Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
 		while(true){
 			Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
 	    for (FlowRule f : rules) {
@@ -89,6 +88,7 @@ public class Rule_insertion{
 		}
 
 		return is_inserted;
+		// return true;
 	}
 
 

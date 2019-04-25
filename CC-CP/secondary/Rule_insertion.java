@@ -75,20 +75,20 @@ public class Rule_insertion{
             .build();
 
     FlowRule ins_rule = insertPiFlowRule(appId,flowRuleService,switchId, tunnelIngressTableId, match, action);
-    Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
-		while(true){
-			Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
-	    for (FlowRule f : rules) {
-				boolean equality = ins_rule.equals(f);
-				if (equality == true) {
-					is_inserted = true;
-					break;
-					}
-			}
-			if(is_inserted)	break;
-		}
+		// while(true){
+		// 	Iterable<FlowRule> rules = flowRuleService.getFlowRulesById(appId);
+	  //   for (FlowRule f : rules) {
+		// 		boolean equality = ins_rule.equals(f);
+		// 		if (equality == true) {
+		// 			is_inserted = true;
+		// 			break;
+		// 			}
+		// 	}
+		// 	if(is_inserted)	break;
+		// }
 
-		return is_inserted;
+		// return is_inserted;
+		return true;
 	}
 
 

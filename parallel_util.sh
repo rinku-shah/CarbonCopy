@@ -77,7 +77,7 @@ sh cpu_util.sh $1 $2 $sg12 secondary.txt tmp_s12 $3 "^%Cpu14 \|^%Cpu15 " &
 #UE utilization
 
 #sh cpu_util.sh $1 $2 $ran1 ran1_util.txt tmp_u1 $3 "^%Cpu0 \|^%Cpu1 \|^%Cpu2 \|^Cpu3 " &
-sh cpu_util.sh $1 $2 $ran1 load_gen.txt tmp_u1 $3 "^%Cpu6 \|^Cpu7 \|^%Cpu8 \|^%Cpu9 " 
+sh cpu_util.sh $1 $2 $ran1 load_gen.txt tmp_u1 $3 "^%Cpu6 \|^Cpu7 \|^%Cpu8 \|^%Cpu9 "
 
 #sh cpu_util.sh $1 $2 $ran2 ran2_util.txt tmp_u2 $3 "^%Cpu4 \|^%Cpu5 \|^%Cpu6 \|^Cpu7 " &
 

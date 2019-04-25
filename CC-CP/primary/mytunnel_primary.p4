@@ -70,9 +70,6 @@ control c_ingress(inout headers hdr,
             standard_metadata.egress_spec = hdr.packet_out.egress_port;
             hdr.packet_out.setInvalid();
 
-            if(hdr.data.type_sync == WRITE){
-
-            }
             return;
 
             }
@@ -96,10 +93,13 @@ control c_ingress(inout headers hdr,
             if(hdr.data.type_sync==WRITE_REPLY){
                 // Egress spec set manually for now. Can make a table of Key vs egress spec but issue
                 // when more WRITE packets of same key come on short time.
-                egressSpec_t temp = 1;
-                standard_metadata.egress_spec = temp;
-                // hdr.ipv4.dstAddr = gateway_ipaddr;
-                hdr.ethernet.dstAddr = gateway_mac;
+                standard_metadata.egress_spec = CPU_PORT;
+                hdr.packet_in.setValid();
+                hdr.packet_in.ingress_port = standard_metadata.ingress_port;
+                // egressSpec_t temp = 1;
+                // standard_metadata.egress_spec = temp;
+                // // hdr.ipv4.dstAddr = gateway_ipaddr;
+                // hdr.ethernet.dstAddr = gateway_mac;
 
             }
 
